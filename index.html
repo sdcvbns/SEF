@@ -445,7 +445,7 @@
   <div class="modal" style="text-align:center; max-width: 440px;">
     <h3 style="justify-content:center; margin-bottom:8px;"><span class="material-symbols-rounded">qr_code_scanner</span> مسح باركود الزبون</h3>
     <p style="font-size:0.8rem; color:var(--muted); margin-bottom:10px;">وجه الكاميرا نحو باركود الزبون للبحث عنه تلقائياً</p>
-    <div id="reader" style="width:100%; border-radius:12px; overflow:hidden; background:#000;"></div>
+    <div id="reader" style="width:100%; min-height:260px; border-radius:12px; overflow:hidden; background:#000;"></div>
     <button type="button" class="secondary" onclick="closeScannerModal()" style="margin-top:12px;">إغلاق الكاميرا</button>
   </div>
 </div>
@@ -740,7 +740,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxjTkdyFqb0qlZZtIXqQVhLIArn_4XgWicmNnmhvGCIU5df03oM8ZK_3xS8eyuh4hmpCA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzKlrKKH1uOnAwf1xJFe6mdXJLY4mBtHJZ8JKXhjOT6BPXpv_RXk_TEKYQQ56cjT9vU4g/exec";
 
 const KEYS = {
   FIRST_LOGIN_DONE: 'office_first_login_done_v1',
@@ -1736,7 +1736,7 @@ function openCustomerDetails(id) {
 
     <div class="barcode-container-box" id="barcode-box-trigger" title="اضغط مطولاً أو انقر للحفظ">
       <svg id="cust-barcode"></svg>
-      <small> اضغط مطولاً على الباركود لحفظه في الجهاز</small>
+      <small>📱 اضغط مطولاً على الباركود لحفظه في الجهاز</small>
     </div>
 
     <div class="balance-grid" style="margin-bottom:10px;">
@@ -1840,27 +1840,31 @@ async function addTransaction(customerId, type) {
 
 function openScannerModal() {
   document.getElementById('scanner-modal').classList.remove('hidden');
-  html5QrCode = new Html5Qrcode("reader");
-  html5QrCode.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: { width: 250, height: 150 } },
-    (decodedText) => {
+  setTimeout(() => {
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("reader");
+    }
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 150 } },
+      (decodedText) => {
+        closeScannerModal();
+        document.getElementById('search-input').value = decodedText;
+        renderCustomersList();
+        showToast(`تم التعرف على الباركود: ${decodedText}`);
+      },
+      (errorMessage) => {}
+    ).catch(err => {
+      alert("تعذر تشغيل كاميرا الجهاز. تأكد من فتح الصفحة عبر رابط آمن (HTTPS) ومنح صلاحيات الكاميرا للمتصفح.");
       closeScannerModal();
-      document.getElementById('search-input').value = decodedText;
-      renderCustomersList();
-      showToast(`تم التعرف على الباركود: ${decodedText}`);
-    },
-    (errorMessage) => {}
-  ).catch(err => {
-    alert("تعذر تشغيل كاميرا الجهاز. تأكد من منح الصلاحيات.");
-    closeScannerModal();
-  });
+    });
+  }, 300);
 }
 
 function closeScannerModal() {
   if (html5QrCode) {
     html5QrCode.stop().then(() => {
-      html5QrCode.clear();
+      return html5QrCode.clear();
     }).catch(() => {}).finally(() => {
       document.getElementById('scanner-modal').classList.add('hidden');
     });
