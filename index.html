@@ -924,7 +924,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyW62VKbCqa-LkEG-8CT
 const VERSION_JSON_URL = "https://raw.githubusercontent.com/sdcvbns/SEF/refs/heads/main/version.json";
 
 const UPDATE_DURATION_SECONDS = 5 * 60; // 5 دقائق
-const UPDATE_POLL_INTERVAL_MS = 30000; // فحص دوري كل 30 ثانية للتحديث الإجباري
+const UPDATE_POLL_INTERVAL_MS = 10000; // فحص دوري كل 30 ثانية للتحديث الإجباري
 
 const KEYS = {
   FIRST_LOGIN_DONE: 'office_first_login_done_v1',
@@ -935,7 +935,8 @@ const KEYS = {
   LOCKOUT_UNTIL: 'office_lockout_until_v1',
   LOCAL_USD_DATA: 'office_local_usd_v2',
   ACTIVE_SESSION: 'office_active_session_v1',
-  DAILY_REPORT_CACHE: 'office_daily_report_cache_v1'
+  DAILY_REPORT_CACHE: 'office_daily_report_cache_v1',
+  ACK_UPDATE_VERSION: 'office_ack_update_version_v1'
 };
 
 const SESSION_TTL_MS = 45000;
@@ -950,7 +951,7 @@ let officeProfile = null;
 
 let remoteLatestVersion = 0;
 let remoteUpdateState = {
-  installedVersion: 0,
+  installedVersion: Number(localStorage.getItem(KEYS.ACK_UPDATE_VERSION) || 0),
   updateInProgressUntil: 0,
   updatePendingRestart: false
 };
@@ -971,6 +972,7 @@ let activeCustomerSubtab = "add-debt";
 
 function applyRemoteUpdatePayload(data) {
   if (!data) return;
+  const ackVer = Number(localStorage.getItem(KEYS.ACK_UPDATE_VERSION) || 0);
   const rawVer = (data.versionCode !== undefined && data.versionCode !== null)
     ? data.versionCode
     : (data.latestVersion !== undefined && data.latestVersion !== null
@@ -980,7 +982,9 @@ function applyRemoteUpdatePayload(data) {
     const ver = Number(rawVer || 0);
     if (ver > 0) {
       remoteLatestVersion = ver;
-      if (!remoteUpdateState.installedVersion || remoteUpdateState.installedVersion >= ver) {
+      if (ackVer >= ver) {
+        remoteUpdateState.installedVersion = ackVer;
+      } else if (!remoteUpdateState.installedVersion || remoteUpdateState.installedVersion >= ver) {
         remoteUpdateState.installedVersion = Math.max(0, ver - 1);
       }
     }
@@ -997,7 +1001,8 @@ function applyRemoteUpdatePayload(data) {
 function isMandatoryUpdateRequired() {
   const latestVer = Number(remoteLatestVersion || 0);
   const installedVer = Number(remoteUpdateState.installedVersion || 0);
-  return latestVer > 0 && latestVer > installedVer;
+  const ackVer = Number(localStorage.getItem(KEYS.ACK_UPDATE_VERSION) || 0);
+  return latestVer > 0 && latestVer > installedVer && latestVer > ackVer;
 }
 
 async function fetchVersionFromJson() {
@@ -1076,8 +1081,10 @@ async function showUpdateFinishedState() {
     updateCountdownInterval = null;
   }
   const latestVer = Number(remoteLatestVersion || remoteUpdateState.installedVersion || 1);
+  const finalVer = latestVer > 0 ? latestVer : 1;
+  localStorage.setItem(KEYS.ACK_UPDATE_VERSION, String(finalVer));
   remoteUpdateState = {
-    installedVersion: latestVer > 0 ? latestVer : 1,
+    installedVersion: finalVer,
     updateInProgressUntil: 0,
     updatePendingRestart: true
   };
@@ -1098,7 +1105,7 @@ async function showUpdateFinishedState() {
 
   if (iconEl) iconEl.textContent = 'check_circle';
   if (titleEl) titleEl.textContent = 'اكتمل التحديث';
-  if (descEl) descEl.textContent = 'تم تثبيت التحديث بنجاح. اضغط على إعادة تشغيل لعرض الواجهات.';
+  if (descEl) descEl.textContent = 'تم التحديث بنجاح. اضغط على إعادة تشغيل للدخول.';
   if (promptSec) promptSec.classList.add('hidden');
   if (progSec) progSec.classList.add('hidden');
   if (restartSec) restartSec.classList.remove('hidden');
@@ -1115,7 +1122,7 @@ function runUpdateCountdownLoop(endTimeMs) {
 
   if (iconEl) iconEl.textContent = 'system_update';
   if (titleEl) titleEl.textContent = 'جاري تثبيت التحديث';
-  if (descEl) descEl.textContent = 'يتم الآن تطبيق التحديث الإجباري. يرجى الانتظار لمدة 5 دقائق...';
+  if (descEl) descEl.textContent = '';
   if (promptSec) promptSec.classList.add('hidden');
   if (progSec) progSec.classList.remove('hidden');
   if (restartSec) restartSec.classList.add('hidden');
@@ -1151,8 +1158,10 @@ async function startMandatoryUpdate() {
 
 async function restartAfterUpdate() {
   const latestVer = Number(remoteLatestVersion || remoteUpdateState.installedVersion || 1);
+  const finalVer = latestVer > 0 ? latestVer : 1;
+  localStorage.setItem(KEYS.ACK_UPDATE_VERSION, String(finalVer));
   remoteUpdateState = {
-    installedVersion: latestVer > 0 ? latestVer : 1,
+    installedVersion: finalVer,
     updateInProgressUntil: 0,
     updatePendingRestart: false
   };
@@ -1175,16 +1184,10 @@ async function restartAfterUpdate() {
   renderAmanatList();
   renderDailyReports(false);
   switchTab('home');
-  showToast("تمت إعادة تشغيل الواجهات بنجاح ✓");
+  showToast("تم بنجاح ✓");
 }
 
 function checkUpdateStateOnLoad() {
-  if (remoteUpdateState.updatePendingRestart) {
-    document.getElementById('update-screen').classList.remove('hidden');
-    showUpdateFinishedState();
-    return true;
-  }
-
   const inProgressUntil = Number(remoteUpdateState.updateInProgressUntil || 0);
   if (inProgressUntil > 0) {
     if (inProgressUntil > Date.now()) {
@@ -1195,6 +1198,12 @@ function checkUpdateStateOnLoad() {
       showUpdateFinishedState();
       return true;
     }
+  }
+
+  if (remoteUpdateState.updatePendingRestart && isMandatoryUpdateRequired()) {
+    document.getElementById('update-screen').classList.remove('hidden');
+    showUpdateFinishedState();
+    return true;
   }
 
   if (isMandatoryUpdateRequired()) {
