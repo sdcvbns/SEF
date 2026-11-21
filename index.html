@@ -612,7 +612,7 @@
   <header>
     <div>
       <h2 id="header-office-title">نظام إدارة الديون</h2>
-      <p id="status-text">النظام نشط ومؤمّن</p>
+      <p id="status-text">Abu Saad</p>
     </div>
     <div class="header-actions">
       <button class="secondary" onclick="openRightDrawer()">
@@ -1133,7 +1133,7 @@ async function showUpdateFinishedState() {
 
   if (iconEl) iconEl.textContent = 'check_circle';
   if (titleEl) titleEl.textContent = 'اكتمل التحديث';
-  if (descEl) descEl.textContent = 'تم تثبيت التحديث بنجاح. اضغط على إعادة تشغيل لعرض الواجهات.';
+  if (descEl) descEl.textContent = 'تم التحديث بنجاح. اضغط على إعادة تشغيل.';
   if (promptSec) promptSec.classList.add('hidden');
   if (progSec) progSec.classList.add('hidden');
   if (restartSec) restartSec.classList.remove('hidden');
@@ -1150,7 +1150,7 @@ function runUpdateCountdownLoop(endTimeMs) {
 
   if (iconEl) iconEl.textContent = 'system_update';
   if (titleEl) titleEl.textContent = 'جاري تثبيت التحديث';
-  if (descEl) descEl.textContent = 'يتم الآن تطبيق التحديث الإجباري. يرجى الانتظار لمدة 5 دقائق...';
+  if (descEl) descEl.textContent ='';
   if (promptSec) promptSec.classList.add('hidden');
   if (progSec) progSec.classList.remove('hidden');
   if (restartSec) restartSec.classList.add('hidden');
@@ -1214,7 +1214,7 @@ async function restartAfterUpdate() {
   renderAmanatList();
   renderDailyReports(false);
   switchTab('home');
-  showToast("تمت إعادة تشغيل الواجهات بنجاح ✓");
+  showToast("تم بنجاح");
 }
 
 function checkUpdateStateOnLoad() {
