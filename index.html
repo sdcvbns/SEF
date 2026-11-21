@@ -971,30 +971,26 @@ let activeCustomerSubtab = "add-debt";
 
 function applyRemoteUpdatePayload(data) {
   if (!data) return;
-  const rawVer = data.latestVersion !== undefined && data.latestVersion !== null
-    ? data.latestVersion
-    : (data.versionCode !== undefined && data.versionCode !== null
-        ? data.versionCode
+  const rawVer = (data.versionCode !== undefined && data.versionCode !== null)
+    ? data.versionCode
+    : (data.latestVersion !== undefined && data.latestVersion !== null
+        ? data.latestVersion
         : (data.version !== undefined && data.version !== null ? data.version : data.lastVersion));
   if (rawVer !== undefined && rawVer !== null) {
     const ver = Number(rawVer || 0);
     if (ver > 0) {
       remoteLatestVersion = ver;
-      if (!remoteUpdateState.installedVersion) {
-        remoteUpdateState.installedVersion = 1;
+      if (!remoteUpdateState.installedVersion || remoteUpdateState.installedVersion >= ver) {
+        remoteUpdateState.installedVersion = Math.max(0, ver - 1);
       }
     }
   }
   if (data.updateState && typeof data.updateState === 'object') {
     const st = data.updateState;
-    const inst = Number(st.installedVersion || 0);
     const progUntil = Number(st.updateInProgressUntil || 0);
     const pendRestart = Boolean(st.updatePendingRestart);
-    remoteUpdateState = {
-      installedVersion: inst > 0 ? inst : 1,
-      updateInProgressUntil: isNaN(progUntil) ? 0 : progUntil,
-      updatePendingRestart: pendRestart
-    };
+    remoteUpdateState.updateInProgressUntil = isNaN(progUntil) ? 0 : progUntil;
+    remoteUpdateState.updatePendingRestart = pendRestart;
   }
 }
 
