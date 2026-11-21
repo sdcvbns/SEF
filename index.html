@@ -973,7 +973,9 @@ function applyRemoteUpdatePayload(data) {
   if (!data) return;
   const rawVer = data.latestVersion !== undefined && data.latestVersion !== null
     ? data.latestVersion
-    : (data.version !== undefined && data.version !== null ? data.version : data.lastVersion);
+    : (data.versionCode !== undefined && data.versionCode !== null
+        ? data.versionCode
+        : (data.version !== undefined && data.version !== null ? data.version : data.lastVersion));
   if (rawVer !== undefined && rawVer !== null) {
     const ver = Number(rawVer || 0);
     if (ver > 0) {
