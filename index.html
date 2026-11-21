@@ -8,8 +8,6 @@
 <!-- مكتبة توليد الباركود والـ QR -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-<!-- مكتبة قارئ الباركود عبر الكاميرا -->
-<script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
 
 <!-- خطوط وأيقونات Google Material You -->
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -85,7 +83,7 @@
     --line: rgba(148, 163, 184, 0.4); --brand: #0284c7; --brand-on: #ffffff;
   }
   :root[data-template="glass"] body { background: var(--bg); background-attachment: fixed; }
-  :root[data-template="glass"] .card, :root[data-template="glass"] header, :root[data-template="glass"] nav.bottom, :root[data-template="glass"] .modal {
+  :root[data-template="glass"] .card, :root[data-template="glass"] header, :root[data-template="glass"] nav.bottom, :root[data-template="glass"] .modal, :root[data-template="glass"] .side-drawer-right {
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
   }
 
@@ -207,6 +205,14 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  .update-progress-track {
+    width: 100%; height: 14px; background: var(--surface-container); border: 1px solid var(--line);
+    border-radius: 999px; overflow: hidden; margin: 14px 0 8px;
+  }
+  .update-progress-fill {
+    width: 0%; height: 100%; background: var(--brand); border-radius: 999px; transition: width 0.4s linear;
+  }
+
   header {
     background: var(--card); border: 1px solid var(--line); padding: 14px 18px; border-radius: var(--r);
     margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
@@ -214,6 +220,29 @@
   header h2{margin:0;font-size:1.2rem;color:var(--brand);font-weight:800}
   header p{margin:0;font-size:0.8rem;color:var(--muted)}
   header button{width:auto;padding:6px 12px;font-size:0.8rem;margin:0;border-radius:99px}
+
+  .header-actions { display: flex; align-items: center; gap: 6px; }
+
+  .drawer-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 2500;
+    backdrop-filter: blur(3px); transition: opacity 0.25s ease;
+  }
+  .side-drawer-right {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 84%; max-width: 340px;
+    background: var(--card); border-left: 1px solid var(--line); z-index: 2600;
+    padding: 18px 16px 32px; overflow-y: auto; transform: translateX(0);
+    transition: transform 0.28s cubic-bezier(0.2, 0, 0, 1); box-shadow: -12px 0 35px rgba(0,0,0,0.45);
+  }
+  .side-drawer-right.closed { transform: translateX(100%); }
+
+  .drawer-nav-btn {
+    justify-content: flex-start; padding: 12px 14px; margin: 8px 0;
+    border-radius: var(--r-sm); background: var(--surface-container); color: var(--text);
+    border: 1px solid var(--line); font-size: 0.9rem;
+  }
+  .drawer-nav-btn.active {
+    background: var(--brand); color: var(--brand-on); border-color: var(--brand);
+  }
 
   .card {
     background: var(--card); padding: 16px; margin-bottom: 14px; border-radius: var(--r);
@@ -241,39 +270,66 @@
   .bal-box span { font-size: 0.72rem; color: var(--muted); display: block; }
   .bal-box strong { font-size: 1.15rem; font-weight: 800; display: block; margin-top: 4px; }
 
-  .customer-card, .item-card {
+  #customers-list.list-box-mode, #customers-tab-list.list-box-mode {
+    display: flex; flex-direction: column;
+    background: var(--surface-container); border: 1px solid var(--line);
+    border-radius: var(--r-sm); overflow-y: auto;
+    max-height: 360px; -webkit-overflow-scrolling: touch;
+  }
+  #customers-list.list-box-mode .customer-card, #customers-tab-list.list-box-mode .customer-card {
+    background: transparent; border: none; border-bottom: 1px solid var(--line);
+    padding: 8px 12px; border-radius: 0; margin-bottom: 0;
+    display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.15s; width: 100%; flex-shrink: 0;
+  }
+  #customers-list.list-box-mode .customer-card:last-child, #customers-tab-list.list-box-mode .customer-card:last-child { border-bottom: none; }
+  #customers-list.list-box-mode .customer-card:active, #customers-tab-list.list-box-mode .customer-card:active { background: var(--surface-high); }
+  #customers-list.list-box-mode .avatar, #customers-tab-list.list-box-mode .avatar { width: 34px; height: 34px; font-size: 0.85rem; }
+  #customers-list.list-box-mode .cust-name, #customers-tab-list.list-box-mode .cust-name { font-size: 0.9rem; }
+  #customers-list.list-box-mode .cust-sub, #customers-tab-list.list-box-mode .cust-sub { font-size: 0.72rem; }
+  #customers-list.list-box-mode .cust-debt, #customers-tab-list.list-box-mode .cust-debt { font-size: 0.85rem; }
+
+  #customers-list.cards-mode, #customers-tab-list.cards-mode {
+    display: block;
+    background: transparent; border: none; border-radius: 0; overflow: visible; max-height: none;
+  }
+  #customers-list.cards-mode .customer-card, #customers-tab-list.cards-mode .customer-card {
     background: var(--surface-container); border: 1px solid var(--line); padding: 12px; border-radius: var(--r-sm);
     margin-bottom: 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.2s; width: 100%;
   }
-  .customer-card:active, .item-card:active { background: var(--surface-high); transform: scale(0.99); }
-  .avatar {
-    width: 46px; height: 46px; border-radius: 50%; background: var(--secondary-container); color: var(--brand);
-    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; flex-shrink: 0; object-fit: cover;
+  #customers-list.cards-mode .customer-card:active, #customers-tab-list.cards-mode .customer-card:active { background: var(--surface-high); transform: scale(0.99); }
+  #customers-list.cards-mode .avatar, #customers-tab-list.cards-mode .avatar { width: 46px; height: 46px; font-size: 1rem; }
+  #customers-list.cards-mode .cust-name, #customers-tab-list.cards-mode .cust-name { font-size: 0.98rem; }
+  #customers-list.cards-mode .cust-sub, #customers-tab-list.cards-mode .cust-sub { font-size: 0.78rem; }
+  #customers-list.cards-mode .cust-debt, #customers-tab-list.cards-mode .cust-debt { font-size: 0.92rem; }
+
+  .item-card {
+    background: var(--surface-container); border: 1px solid var(--line); padding: 12px; border-radius: var(--r-sm);
+    margin-bottom: 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.2s; width: 100%;
   }
-  .cust-info { flex: 1; min-width: 0; }
-  .cust-name { font-weight: 700; font-size: 0.98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cust-sub { font-size: 0.78rem; color: var(--muted); }
-  .cust-debt { text-align: left; font-weight: 800; font-size: 0.92rem; }
+  .item-card:active { background: var(--surface-high); transform: scale(0.99); }
+
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--secondary-container); color: var(--brand);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; flex-shrink: 0; object-fit: cover;
+  }
+  .cust-info { flex: 1; min-width: 0; line-height: 1.3; }
+  .cust-name { font-weight: 700; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cust-sub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cust-debt { text-align: left; font-weight: 800; font-size: 0.85rem; line-height: 1.25; flex-shrink: 0; }
 
   .search-wrapper { position: relative; width: 100%; display: flex; align-items: center; }
-  .search-wrapper input { padding-left: 46px; margin: 0; width: 100%; }
-  .barcode-scanner-btn {
-    position: absolute; left: 8px; background: var(--surface-high); border: 1px solid var(--line);
-    color: var(--brand); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center;
-    justify-content: center; cursor: pointer; padding: 0; margin: 0; z-index: 10;
-  }
-  .barcode-scanner-btn:active { transform: scale(0.92); }
+  .search-wrapper input { margin: 0; width: 100%; }
 
   nav.bottom {
     position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--line);
-    display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px; z-index: 900; backdrop-filter: blur(12px);
-    max-width: 720px; margin-inline: auto;
+    display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 4px; z-index: 900; backdrop-filter: blur(12px);
+    max-width: 720px; margin-inline: auto; gap: 2px;
   }
   nav.bottom button {
-    background: none; color: var(--muted); margin: 0; padding: 6px 2px; font-size: 0.7rem;
+    background: none; color: var(--muted); margin: 0; padding: 6px 2px; font-size: 0.65rem;
     display: flex; flex-direction: column; gap: 2px; align-items: center; border-radius: var(--r-sm);
   }
-  nav.bottom button span { font-size: 20px; }
+  nav.bottom button span { font-size: 19px; }
   nav.bottom button.active { color: var(--brand); background: var(--brand-soft); }
 
   .modal-bg {
@@ -289,12 +345,36 @@
   .modal-bg.center-dialog .modal { border-radius: var(--r); max-width: 380px; padding: 22px; }
   @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-  .barcode-container-box {
-    background: #ffffff; padding: 14px; border-radius: var(--r-sm); text-align: center; margin: 12px 0;
-    border: 2px dashed var(--brand); cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  .barcode-square-box {
+    background: #ffffff; width: 112px; height: 112px; padding: 8px; border-radius: var(--r-sm);
+    text-align: center; margin: 10px auto; border: 2px dashed var(--brand); cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.12); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; overflow: hidden;
   }
-  .barcode-container-box svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
-  .barcode-container-box small { color: #555; display: block; margin-top: 4px; font-weight: 700; font-size: 0.75rem; }
+  .barcode-square-box svg { max-width: 100%; max-height: 78px; width: auto; height: auto; display: block; margin: 0 auto; }
+  .barcode-square-box small { color: #444; display: block; margin-top: 2px; font-weight: 700; font-size: 0.62rem; line-height: 1.1; }
+
+  .customer-subtabs {
+    display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px;
+    scrollbar-width: none;
+  }
+  .customer-subtabs::-webkit-scrollbar { display: none; }
+  .customer-subtab-btn {
+    width: auto; white-space: nowrap; padding: 8px 12px; margin: 0; font-size: 0.78rem;
+    border-radius: var(--r-sm); background: var(--surface-container); color: var(--muted);
+    border: 1px solid var(--line); flex-shrink: 0;
+  }
+  .customer-subtab-btn.active {
+    background: var(--brand); color: var(--brand-on); border-color: var(--brand);
+  }
+
+  .receipt-preview-box {
+    background: var(--surface-high); border: 1px solid var(--line); border-radius: var(--r-sm);
+    padding: 8px; margin: 6px 0 10px; display: flex; align-items: center; gap: 10px;
+  }
+  .receipt-preview-box img {
+    width: 56px; height: 56px; object-fit: cover; border-radius: 8px; cursor: pointer;
+  }
 
   .history-item { border-bottom: 1px solid var(--line); padding: 10px 0; font-size: 0.88rem; }
   .history-item:last-child { border-bottom: none; }
@@ -318,6 +398,44 @@
 </style>
 </head>
 <body>
+
+<!-- ديالوك التحديث الإجباري الكامل (إشعار إجباري -> عدّاد 5 دقائق -> إعادة تشغيل) -->
+<div id="update-screen" class="fullscreen-overlay hidden" style="z-index: 10002;">
+  <div class="lock-card" style="border-color: var(--brand);">
+    <div class="lock-icon">
+      <span class="material-symbols-rounded" id="update-screen-icon" style="font-size:34px;">system_update</span>
+    </div>
+    <h2 id="update-screen-title" style="margin-bottom:6px; color:var(--brand); font-size:1.2rem;">تحديث إجباري مطلوب</h2>
+    <p id="update-screen-desc" style="font-size:0.84rem; color:var(--muted); margin-bottom:14px;">
+      يتوفر تحديث جديد للنظام. يجب إتمام التحديث الآن للمتابعة ولا يمكن تأجيله أو إغلاقه.
+    </p>
+
+    <div id="update-prompt-section">
+      <button type="button" onclick="startMandatoryUpdate()">
+        <span class="material-symbols-rounded">downloading</span> تحديث الآن
+      </button>
+    </div>
+
+    <div id="update-progress-section" class="hidden">
+      <div class="update-progress-track">
+        <div id="update-progress-bar" class="update-progress-fill"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:0.82rem; font-weight:700; color:var(--text);">
+        <span id="update-percent-text">0%</span>
+        <span id="update-timer-text" style="color:var(--brand);">05:00</span>
+      </div>
+    </div>
+
+    <div id="update-restart-section" class="hidden" style="margin-top:14px;">
+      <p style="font-size:0.84rem; color:var(--success); font-weight:700; margin-bottom:10px;">
+        اكتمل التحديث بنجاح ✓
+      </p>
+      <button type="button" onclick="restartAfterUpdate()">
+        <span class="material-symbols-rounded">restart_alt</span> إعادة تشغيل
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- 1. معالج التسجيل لأول مرة (3 خطوات) -->
 <div id="onboarding-screen" class="fullscreen-overlay">
@@ -440,13 +558,19 @@
   </div>
 </div>
 
-<!-- 5. نافذة ماسح الباركود بالكاميرا -->
-<div id="scanner-modal" class="modal-bg center-dialog hidden">
-  <div class="modal" style="text-align:center; max-width: 440px;">
-    <h3 style="justify-content:center; margin-bottom:8px;"><span class="material-symbols-rounded">qr_code_scanner</span> مسح باركود الزبون</h3>
-    <p style="font-size:0.8rem; color:var(--muted); margin-bottom:10px;">وجه الكاميرا نحو باركود الزبون للبحث عنه تلقائياً</p>
-    <div id="reader" style="width:100%; min-height:260px; border-radius:12px; overflow:hidden; background:#000;"></div>
-    <button type="button" class="secondary" onclick="closeScannerModal()" style="margin-top:12px;">إغلاق الكاميرا</button>
+<!-- 5. نافذة تكبير الباركود -->
+<div id="barcode-zoom-modal" class="modal-bg center-dialog hidden" onclick="closeModal('barcode-zoom-modal')">
+  <div class="modal" style="text-align:center; max-width:360px;" onclick="event.stopPropagation()">
+    <h3 style="justify-content:center; margin-bottom:6px;">باركود الزبون الخاص</h3>
+    <p id="barcode-zoom-name" style="font-size:0.85rem; color:var(--muted); margin-bottom:8px;"></p>
+    <div style="background:#ffffff; padding:16px; border-radius:var(--r-sm); display:inline-block;">
+      <svg id="zoomed-barcode"></svg>
+    </div>
+    <p style="font-size:0.75rem; color:var(--muted); margin-top:8px;">مسح الباركود يفتح تفاصيل الديون والمدفوعات والباقي والوصولات</p>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
+      <button type="button" onclick="saveBarcodeImage(zoomedBarcodeCustomerId)"><span class="material-symbols-rounded" style="font-size:16px;">download</span> تنزيل</button>
+      <button type="button" class="secondary" onclick="closeModal('barcode-zoom-modal')">إغلاق</button>
+    </div>
   </div>
 </div>
 
@@ -470,10 +594,14 @@
 
 <!-- 7. نافذة عرض الصورة المكبرة (Lightbox) -->
 <div id="lightbox-modal" class="modal-bg center-dialog hidden" onclick="closeLightbox()">
-  <div class="modal" style="text-align:center; background:rgba(0,0,0,0.9); max-width:90vw;" onclick="event.stopPropagation()">
-    <img id="lightbox-img" style="max-width:100%; max-height:75vh; border-radius:8px; object-fit:contain;" />
-    <p style="color:#fff; font-size:0.75rem; margin-top:8px;">📱 اضغط مطولاً على الصورة لحفظها في الجهاز</p>
-    <button type="button" class="secondary" onclick="closeLightbox()" style="margin-top:10px;">إغلاق</button>
+  <div class="modal" style="text-align:center; background:rgba(0,0,0,0.92); max-width:92vw;" onclick="event.stopPropagation()">
+    <img id="lightbox-img" style="max-width:100%; max-height:72vh; border-radius:8px; object-fit:contain;" />
+    <p id="lightbox-meta" style="color:#ddd; font-size:0.78rem; margin-top:8px;"></p>
+    <p style="color:#aaa; font-size:0.72rem; margin-top:4px;">📱 اضغط مطولاً على الصورة لحفظها في الجهاز</p>
+    <div style="display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap;">
+      <button type="button" id="lightbox-share-btn" style="width:auto; padding:8px 14px; font-size:0.82rem;"><span class="material-symbols-rounded" style="font-size:16px;">print</span> طباعة / مشاركة الوصل</button>
+      <button type="button" class="secondary" onclick="closeLightbox()" style="width:auto; padding:8px 14px; font-size:0.82rem;">إغلاق</button>
+    </div>
   </div>
 </div>
 
@@ -486,10 +614,31 @@
       <h2 id="header-office-title">نظام إدارة الديون</h2>
       <p id="status-text">النظام نشط ومؤمّن</p>
     </div>
-    <button class="secondary" onclick="fetchAllData(true)">
-      <span class="material-symbols-rounded" style="font-size:16px;">refresh</span> تحديث
-    </button>
+    <div class="header-actions">
+      <button class="secondary" onclick="openRightDrawer()">
+        <span class="material-symbols-rounded" style="font-size:18px;">menu</span> القائمة
+      </button>
+    </div>
   </header>
+
+  <!-- القائمة الجانبية على اليمين -->
+  <div id="right-drawer-backdrop" class="drawer-backdrop hidden" onclick="closeRightDrawer()"></div>
+  <aside id="right-drawer" class="side-drawer-right closed">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="margin:0; color:var(--brand);"><span class="material-symbols-rounded">menu_open</span> القائمة</h3>
+      <button type="button" class="secondary" onclick="closeRightDrawer()" style="width:auto; padding:6px 10px; font-size:0.78rem; margin:0;">
+        <span class="material-symbols-rounded" style="font-size:16px;">close</span> إغلاق
+      </button>
+    </div>
+
+    <button type="button" id="drawer-btn-reports" class="drawer-nav-btn active" onclick="openDrawerSection('reports')">
+      <span class="material-symbols-rounded">summarize</span> التقارير والحركات اليومية
+    </button>
+
+    <button type="button" id="drawer-btn-settings" class="drawer-nav-btn" onclick="openDrawerSection('settings')">
+      <span class="material-symbols-rounded">settings</span> الاعدادت
+    </button>
+  </aside>
 
   <!-- قسم لوحة التحكم / الرئيسية -->
   <div id="view-home" class="view">
@@ -514,10 +663,7 @@
     <div class="card">
       <h3><span class="material-symbols-rounded">search</span> بحث سريع عن زبون</h3>
       <div class="search-wrapper">
-        <input type="text" id="search-input" placeholder="ابحث بالاسم، رقم الهاتف، أو المحافظة..." oninput="renderCustomersList()">
-        <button type="button" class="barcode-scanner-btn" onclick="openScannerModal()" title="مسح باركود بالكاميرا">
-          <span class="material-symbols-rounded" style="font-size:20px;">qr_code_scanner</span>
-        </button>
+        <input type="text" id="search-input" placeholder="ابحث باسم الزبون..." oninput="renderCustomersList()">
       </div>
     </div>
 
@@ -528,7 +674,23 @@
           <span class="material-symbols-rounded" style="font-size:16px;">person_add</span> إضافة زبون
         </button>
       </div>
-      <div id="customers-list"></div>
+      <div id="customers-list" class="list-box-mode"></div>
+    </div>
+  </div>
+
+  <!-- قسم قائمة الزبائن المستقل -->
+  <div id="view-customers-list" class="view hidden">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0;"><span class="material-symbols-rounded">contacts</span> قائمة الزبائن</h3>
+        <button onclick="openAddCustomerModal()" style="width:auto; padding:6px 12px; font-size:0.8rem;">
+          <span class="material-symbols-rounded" style="font-size:16px;">person_add</span> إضافة زبون
+        </button>
+      </div>
+      <div class="search-wrapper" style="margin-bottom:12px;">
+        <input type="text" id="customers-tab-search-input" placeholder="ابحث عن زبون في القائمة..." oninput="renderCustomersTabList()">
+      </div>
+      <div id="customers-tab-list" class="list-box-mode"></div>
     </div>
   </div>
 
@@ -562,18 +724,36 @@
     </div>
   </div>
 
-  <!-- قسم الإعدادات -->
+  <!-- قسم التقارير والحركات اليومية -->
+  <div id="view-daily-reports" class="view hidden">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+        <h3 style="margin:0;"><span class="material-symbols-rounded">summarize</span> التقارير والحركات اليومية</h3>
+        <span id="daily-report-updated-label" style="font-size:0.72rem; color:var(--muted);">تحديث تلقائي كل 24 ساعة</span>
+      </div>
+      <div id="daily-reports-content"></div>
+    </div>
+  </div>
+
+  <!-- قسم الاعدادت -->
   <div id="view-settings" class="view hidden">
     <div class="card">
-      <h3><span class="material-symbols-rounded">store</span> معلومات المكتب المسجلة</h3>
-      <div class="summary-box" style="margin-bottom:0;">
-        <div><b>اسم المكتب:</b> <span id="set-office-name">-</span></div>
-        <div><b>رقم الهاتف:</b> <span id="set-office-phone">-</span></div>
-        <div><b>العنوان:</b> <span id="set-office-address">-</span></div>
+      <h3><span class="material-symbols-rounded">view_list</span> عرض شكل القائمة</h3>
+      <p style="font-size:0.82rem; color:var(--muted); margin-bottom:8px;">اختر طريقة عرض قائمة الزبائن:</p>
+      <div class="theme-switch-grid">
+        <div class="theme-opt active" id="listmode-box-btn" onclick="setCustomerListMode('box')">
+          <span class="material-symbols-rounded" style="font-size:24px;">list_alt</span>
+          <span>صندوق قائمة (List)</span>
+          <small>تمرير داخلي للأعلى والأسفل</small>
+        </div>
+        <div class="theme-opt" id="listmode-cards-btn" onclick="setCustomerListMode('cards')">
+          <span class="material-symbols-rounded" style="font-size:24px;">view_agenda</span>
+          <span>قائمة بطاقات</span>
+          <small>عرض كامل بدون صندوق تمرير</small>
+        </div>
       </div>
     </div>
 
-    <!-- ميزة اختيار قوالب الواجهات المتطورة -->
     <div class="card">
       <h3><span class="material-symbols-rounded">dashboard_customize</span> قوالب الواجهات والتميمات</h3>
       <p style="font-size:0.82rem; color:var(--muted); margin-bottom:8px;">اختر القالب الهوياتي المفضل لنظامك:</p>
@@ -642,14 +822,14 @@
     <button class="active" id="nav-home" onclick="switchTab('home')">
       <span class="material-symbols-rounded">dashboard</span>الرئيسية
     </button>
+    <button id="nav-customers" onclick="switchTab('customers-list')">
+      <span class="material-symbols-rounded">contacts</span>قائمة الزبائن
+    </button>
     <button id="nav-creditor" onclick="switchTab('creditor-debts')">
       <span class="material-symbols-rounded">request_quote</span>الديون عليه
     </button>
     <button id="nav-amanat" onclick="switchTab('amanat')">
       <span class="material-symbols-rounded">inventory_2</span>الأمانات
-    </button>
-    <button id="nav-settings" onclick="switchTab('settings')">
-      <span class="material-symbols-rounded">settings</span>الإعدادات
     </button>
   </nav>
 </div>
@@ -740,16 +920,27 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzKlrKKH1uOnAwf1xJFe6mdXJLY4mBtHJZ8JKXhjOT6BPXpv_RXk_TEKYQQ56cjT9vU4g/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyW62VKbCqa-LkEG-8CT9_rcLS3ZigdJbEwpxFhUfheOZGgrbSfr2ova942A0jrniuEYA/exec";
+const VERSION_JSON_URL = "https://raw.githubusercontent.com/sdcvbns/SEF/refs/heads/main/version.json";
+
+const UPDATE_DURATION_SECONDS = 5 * 60; // 5 دقائق
+const UPDATE_POLL_INTERVAL_MS = 30000; // فحص دوري كل 30 ثانية للتحديث الإجباري
 
 const KEYS = {
   FIRST_LOGIN_DONE: 'office_first_login_done_v1',
   THEME: 'office_ui_theme_v1',
   TEMPLATE: 'office_ui_template_v1',
+  LIST_MODE: 'office_customer_list_mode_v1',
   ATTEMPTS: 'office_delete_attempts_v1',
   LOCKOUT_UNTIL: 'office_lockout_until_v1',
-  LOCAL_USD_DATA: 'office_local_usd_v2'
+  LOCAL_USD_DATA: 'office_local_usd_v2',
+  ACTIVE_SESSION: 'office_active_session_v1',
+  DAILY_REPORT_CACHE: 'office_daily_report_cache_v1'
 };
+
+const SESSION_TTL_MS = 45000;
+const HEARTBEAT_INTERVAL_MS = 20000;
+const DAILY_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 let customers = [];
 let transactions = [];
@@ -757,12 +948,411 @@ let creditorDebts = [];
 let amanatList = [];
 let officeProfile = null;
 
+let remoteLatestVersion = 0;
+let remoteUpdateState = {
+  installedVersion: 0,
+  updateInProgressUntil: 0,
+  updatePendingRestart: false
+};
+
 let base64Photo = "";
 let base64ReceiptPhoto = "";
 let base64AmanaPhoto = "";
 let pendingDeleteAction = null;
 let lockoutInterval = null;
-let html5QrCode = null;
+let updateCountdownInterval = null;
+let updatePollTimer = null;
+let currentSessionId = "";
+let heartbeatTimer = null;
+let dailyReportTimer = null;
+let zoomedBarcodeCustomerId = "";
+let activeCustomerDetailsId = "";
+let activeCustomerSubtab = "add-debt";
+
+function applyRemoteUpdatePayload(data) {
+  if (!data) return;
+  const rawVer = data.latestVersion !== undefined && data.latestVersion !== null
+    ? data.latestVersion
+    : (data.version !== undefined && data.version !== null ? data.version : data.lastVersion);
+  if (rawVer !== undefined && rawVer !== null) {
+    const ver = Number(rawVer || 0);
+    if (ver > 0) {
+      remoteLatestVersion = ver;
+      if (!remoteUpdateState.installedVersion) {
+        remoteUpdateState.installedVersion = 1;
+      }
+    }
+  }
+  if (data.updateState && typeof data.updateState === 'object') {
+    const st = data.updateState;
+    const inst = Number(st.installedVersion || 0);
+    const progUntil = Number(st.updateInProgressUntil || 0);
+    const pendRestart = Boolean(st.updatePendingRestart);
+    remoteUpdateState = {
+      installedVersion: inst > 0 ? inst : 1,
+      updateInProgressUntil: isNaN(progUntil) ? 0 : progUntil,
+      updatePendingRestart: pendRestart
+    };
+  }
+}
+
+function isMandatoryUpdateRequired() {
+  const latestVer = Number(remoteLatestVersion || 0);
+  const installedVer = Number(remoteUpdateState.installedVersion || 0);
+  return latestVer > 0 && latestVer > installedVer;
+}
+
+async function fetchVersionFromJson() {
+  try {
+    const sep = VERSION_JSON_URL.includes('?') ? '&' : '?';
+    const res = await fetch(`${VERSION_JSON_URL}${sep}t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const jsonData = await res.json();
+    applyRemoteUpdatePayload(jsonData);
+  } catch (e) {}
+}
+
+async function syncRemoteUpdateState(stateFields = null) {
+  const deviceId = getOrCreateDeviceId();
+  const payload = stateFields
+    ? Object.assign({ action: 'setUpdateState', deviceId }, stateFields)
+    : { action: 'checkUpdate', deviceId };
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const text = await res.text();
+    const data = JSON.parse(text);
+    if (data && data.status === 'success') {
+      applyRemoteUpdatePayload(data);
+    }
+  } catch (e) {}
+  await fetchVersionFromJson();
+}
+
+async function checkRemoteProjectUpdate() {
+  await syncRemoteUpdateState(null);
+}
+
+function showMandatoryUpdatePromptDialog() {
+  const screen = document.getElementById('update-screen');
+  const iconEl = document.getElementById('update-screen-icon');
+  const titleEl = document.getElementById('update-screen-title');
+  const descEl = document.getElementById('update-screen-desc');
+  const promptSec = document.getElementById('update-prompt-section');
+  const progSec = document.getElementById('update-progress-section');
+  const restartSec = document.getElementById('update-restart-section');
+
+  if (iconEl) iconEl.textContent = 'system_update';
+  if (titleEl) titleEl.textContent = 'تحديث إجباري مطلوب';
+  if (descEl) descEl.textContent = 'تم إرسال تحديث جديد للنظام. يجب الضغط على "تحديث الآن" للمتابعة ولا يمكن إغلاق أو تأجيل هذا الحوار.';
+  if (promptSec) promptSec.classList.remove('hidden');
+  if (progSec) progSec.classList.add('hidden');
+  if (restartSec) restartSec.classList.add('hidden');
+  if (screen) screen.classList.remove('hidden');
+}
+
+function renderUpdateProgressUI(remainingSeconds, totalSeconds) {
+  const clampedRem = Math.max(0, Math.min(totalSeconds, remainingSeconds));
+  const elapsed = totalSeconds - clampedRem;
+  const pct = Math.min(100, Math.max(0, Math.round((elapsed / totalSeconds) * 100)));
+  const mins = Math.floor(clampedRem / 60);
+  const secs = clampedRem % 60;
+
+  const barEl = document.getElementById('update-progress-bar');
+  const pctEl = document.getElementById('update-percent-text');
+  const timerEl = document.getElementById('update-timer-text');
+
+  if (barEl) barEl.style.width = `${pct}%`;
+  if (pctEl) pctEl.textContent = `${pct}%`;
+  if (timerEl) timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+async function showUpdateFinishedState() {
+  if (updateCountdownInterval) {
+    clearInterval(updateCountdownInterval);
+    updateCountdownInterval = null;
+  }
+  const latestVer = Number(remoteLatestVersion || remoteUpdateState.installedVersion || 1);
+  remoteUpdateState = {
+    installedVersion: latestVer > 0 ? latestVer : 1,
+    updateInProgressUntil: 0,
+    updatePendingRestart: true
+  };
+
+  await syncRemoteUpdateState({
+    installedVersion: remoteUpdateState.installedVersion,
+    updateInProgressUntil: 0,
+    updatePendingRestart: true
+  });
+
+  renderUpdateProgressUI(0, UPDATE_DURATION_SECONDS);
+  const iconEl = document.getElementById('update-screen-icon');
+  const titleEl = document.getElementById('update-screen-title');
+  const descEl = document.getElementById('update-screen-desc');
+  const promptSec = document.getElementById('update-prompt-section');
+  const progSec = document.getElementById('update-progress-section');
+  const restartSec = document.getElementById('update-restart-section');
+
+  if (iconEl) iconEl.textContent = 'check_circle';
+  if (titleEl) titleEl.textContent = 'اكتمل التحديث';
+  if (descEl) descEl.textContent = 'تم تثبيت التحديث بنجاح. اضغط على إعادة تشغيل لعرض الواجهات.';
+  if (promptSec) promptSec.classList.add('hidden');
+  if (progSec) progSec.classList.add('hidden');
+  if (restartSec) restartSec.classList.remove('hidden');
+}
+
+function runUpdateCountdownLoop(endTimeMs) {
+  const screen = document.getElementById('update-screen');
+  const iconEl = document.getElementById('update-screen-icon');
+  const titleEl = document.getElementById('update-screen-title');
+  const descEl = document.getElementById('update-screen-desc');
+  const promptSec = document.getElementById('update-prompt-section');
+  const progSec = document.getElementById('update-progress-section');
+  const restartSec = document.getElementById('update-restart-section');
+
+  if (iconEl) iconEl.textContent = 'system_update';
+  if (titleEl) titleEl.textContent = 'جاري تثبيت التحديث';
+  if (descEl) descEl.textContent = 'يتم الآن تطبيق التحديث الإجباري. يرجى الانتظار لمدة 5 دقائق...';
+  if (promptSec) promptSec.classList.add('hidden');
+  if (progSec) progSec.classList.remove('hidden');
+  if (restartSec) restartSec.classList.add('hidden');
+  if (screen) screen.classList.remove('hidden');
+
+  if (updateCountdownInterval) clearInterval(updateCountdownInterval);
+
+  const tick = () => {
+    const remSec = Math.ceil((endTimeMs - Date.now()) / 1000);
+    if (remSec <= 0) {
+      showUpdateFinishedState();
+      return;
+    }
+    renderUpdateProgressUI(remSec, UPDATE_DURATION_SECONDS);
+  };
+
+  tick();
+  updateCountdownInterval = setInterval(tick, 1000);
+}
+
+async function startMandatoryUpdate() {
+  const endTimeMs = Date.now() + (UPDATE_DURATION_SECONDS * 1000);
+  remoteUpdateState.updateInProgressUntil = endTimeMs;
+  remoteUpdateState.updatePendingRestart = false;
+
+  await syncRemoteUpdateState({
+    updateInProgressUntil: endTimeMs,
+    updatePendingRestart: false
+  });
+
+  runUpdateCountdownLoop(endTimeMs);
+}
+
+async function restartAfterUpdate() {
+  const latestVer = Number(remoteLatestVersion || remoteUpdateState.installedVersion || 1);
+  remoteUpdateState = {
+    installedVersion: latestVer > 0 ? latestVer : 1,
+    updateInProgressUntil: 0,
+    updatePendingRestart: false
+  };
+
+  await syncRemoteUpdateState({
+    installedVersion: remoteUpdateState.installedVersion,
+    updateInProgressUntil: 0,
+    updatePendingRestart: false
+  });
+
+  if (updateCountdownInterval) {
+    clearInterval(updateCountdownInterval);
+    updateCountdownInterval = null;
+  }
+
+  document.getElementById('update-screen').classList.add('hidden');
+  renderCustomersList();
+  renderCustomersTabList();
+  renderCreditorDebtsList();
+  renderAmanatList();
+  renderDailyReports(false);
+  switchTab('home');
+  showToast("تمت إعادة تشغيل الواجهات بنجاح ✓");
+}
+
+function checkUpdateStateOnLoad() {
+  if (remoteUpdateState.updatePendingRestart) {
+    document.getElementById('update-screen').classList.remove('hidden');
+    showUpdateFinishedState();
+    return true;
+  }
+
+  const inProgressUntil = Number(remoteUpdateState.updateInProgressUntil || 0);
+  if (inProgressUntil > 0) {
+    if (inProgressUntil > Date.now()) {
+      runUpdateCountdownLoop(inProgressUntil);
+      return true;
+    } else {
+      document.getElementById('update-screen').classList.remove('hidden');
+      showUpdateFinishedState();
+      return true;
+    }
+  }
+
+  if (isMandatoryUpdateRequired()) {
+    showMandatoryUpdatePromptDialog();
+    return true;
+  }
+
+  return false;
+}
+
+function startMandatoryUpdateWatcher() {
+  if (updatePollTimer) clearInterval(updatePollTimer);
+  updatePollTimer = setInterval(async () => {
+    await checkRemoteProjectUpdate();
+    checkUpdateStateOnLoad();
+  }, UPDATE_POLL_INTERVAL_MS);
+}
+
+function openRightDrawer() {
+  const backdrop = document.getElementById('right-drawer-backdrop');
+  const drawer = document.getElementById('right-drawer');
+  if (backdrop) backdrop.classList.remove('hidden');
+  if (drawer) drawer.classList.remove('closed');
+}
+
+function closeRightDrawer() {
+  const backdrop = document.getElementById('right-drawer-backdrop');
+  const drawer = document.getElementById('right-drawer');
+  if (drawer) drawer.classList.add('closed');
+  if (backdrop) backdrop.classList.add('hidden');
+}
+
+function openDrawerSection(section) {
+  closeRightDrawer();
+  document.getElementById('drawer-btn-reports')?.classList.toggle('active', section === 'reports');
+  document.getElementById('drawer-btn-settings')?.classList.toggle('active', section === 'settings');
+  if (section === 'reports') {
+    switchTab('daily-reports');
+  } else if (section === 'settings') {
+    switchTab('settings');
+  }
+}
+
+function formatFullDateTimeAr(dateInput) {
+  const d = dateInput ? new Date(dateInput) : new Date();
+  const validDate = isNaN(d.getTime()) ? new Date() : d;
+  const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const dayName = days[validDate.getDay()];
+  const dayNum = validDate.getDate();
+  const monthNum = validDate.getMonth() + 1;
+  const yearNum = validDate.getFullYear();
+  const timeStr = validDate.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${dayName} ${dayNum}/${monthNum}/${yearNum} — الساعة ${timeStr}`;
+}
+
+function getOrCreateDeviceId() {
+  let devId = localStorage.getItem('office_device_id_v1');
+  if (!devId) {
+    devId = 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem('office_device_id_v1', devId);
+  }
+  return devId;
+}
+
+function getLocalActiveSession() {
+  try {
+    return JSON.parse(localStorage.getItem(KEYS.ACTIVE_SESSION) || 'null');
+  } catch (e) {
+    return null;
+  }
+}
+
+function setLocalActiveSession(sessionObj) {
+  if (sessionObj) {
+    localStorage.setItem(KEYS.ACTIVE_SESSION, JSON.stringify(sessionObj));
+  } else {
+    localStorage.removeItem(KEYS.ACTIVE_SESSION);
+  }
+}
+
+function isAnotherDeviceActive(serverSession) {
+  const now = Date.now();
+  const localSess = getLocalActiveSession();
+  const candidate = (serverSession && serverSession.sessionId) ? serverSession : localSess;
+  if (!candidate || !candidate.sessionId) return false;
+  if (candidate.sessionId === currentSessionId) return false;
+  if (candidate.deviceId && candidate.deviceId === getOrCreateDeviceId()) return false;
+  const lastActive = Number(candidate.lastActive || 0);
+  return (now - lastActive) < SESSION_TTL_MS;
+}
+
+async function sendSessionHeartbeat() {
+  if (!currentSessionId) return;
+  const payload = {
+    action: 'heartbeatSession',
+    sessionId: currentSessionId,
+    deviceId: getOrCreateDeviceId(),
+    lastActive: Date.now(),
+    now: Date.now()
+  };
+  setLocalActiveSession(payload);
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {}
+}
+
+function startActiveSessionLoop(sessionId) {
+  currentSessionId = sessionId;
+  sessionStorage.setItem('office_tab_session_id', sessionId);
+  const initialSess = {
+    sessionId,
+    deviceId: getOrCreateDeviceId(),
+    lastActive: Date.now()
+  };
+  setLocalActiveSession(initialSess);
+  sendSessionHeartbeat();
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  heartbeatTimer = setInterval(sendSessionHeartbeat, HEARTBEAT_INTERVAL_MS);
+}
+
+function releaseActiveSession() {
+  if (!currentSessionId) return;
+  const sessId = currentSessionId;
+  const localSess = getLocalActiveSession();
+  if (localSess && localSess.sessionId === sessId) {
+    setLocalActiveSession(null);
+  }
+  currentSessionId = "";
+  sessionStorage.removeItem('office_tab_session_id');
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+  try {
+    const body = JSON.stringify({
+      action: 'releaseSession',
+      sessionId: sessId,
+      deviceId: getOrCreateDeviceId()
+    });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(SCRIPT_URL, body);
+    } else {
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body
+      }).catch(() => {});
+    }
+  } catch (e) {}
+}
 
 function getLocalUsdData() {
   try {
@@ -781,6 +1371,32 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.remove('hidden');
   setTimeout(() => t.classList.add('hidden'), 3200);
+}
+
+function setCustomerListMode(mode) {
+  localStorage.setItem(KEYS.LIST_MODE, mode);
+  const listEls = [document.getElementById('customers-list'), document.getElementById('customers-tab-list')];
+  const boxBtn = document.getElementById('listmode-box-btn');
+  const cardsBtn = document.getElementById('listmode-cards-btn');
+
+  listEls.forEach(listEl => {
+    if (!listEl) return;
+    if (mode === 'cards') {
+      listEl.classList.remove('list-box-mode');
+      listEl.classList.add('cards-mode');
+    } else {
+      listEl.classList.remove('cards-mode');
+      listEl.classList.add('list-box-mode');
+    }
+  });
+
+  if (mode === 'cards') {
+    if (cardsBtn) cardsBtn.classList.add('active');
+    if (boxBtn) boxBtn.classList.remove('active');
+  } else {
+    if (boxBtn) boxBtn.classList.add('active');
+    if (cardsBtn) cardsBtn.classList.remove('active');
+  }
 }
 
 function setTemplate(tpl) {
@@ -906,6 +1522,8 @@ async function completeOnboarding() {
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'setupOffice', profile, pin })
     });
   } catch (e) {}
@@ -941,23 +1559,56 @@ async function verifyInitialLogin() {
   loginBtn.disabled = true;
   loginBtn.innerHTML = `<div style="width:18px;height:18px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;"></div> جاري التحقق...`;
 
+  const candidateSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  const deviceId = getOrCreateDeviceId();
+
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'auth', code: inputPin })
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'auth',
+        code: String(inputPin),
+        sessionId: candidateSessionId,
+        deviceId: deviceId,
+        now: Date.now(),
+        sessionTtlMs: SESSION_TTL_MS
+      })
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data = {};
+    try {
+      data = JSON.parse(text);
+    } catch (parseErr) {
+      throw new Error("Invalid JSON response");
+    }
 
     if (data.status === 'success') {
+      if (data.sessionLocked || isAnotherDeviceActive(data.activeSession)) {
+        errorEl.textContent = "يوجد جهاز نشط يستخدم البرنامج حالياً؛ لا يمكن الدخول حتى يتم إغلاق الجلسة الحالية.";
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = `<span class="material-symbols-rounded">login</span> دخول للنظام`;
+        return;
+      }
+
       localStorage.setItem(KEYS.FIRST_LOGIN_DONE, 'true');
+      startActiveSessionLoop(candidateSessionId);
+      await checkRemoteProjectUpdate();
       document.getElementById('lock-screen').style.opacity = '0';
       setTimeout(() => {
         document.getElementById('lock-screen').classList.add('hidden');
         document.getElementById('main-app-container').classList.remove('hidden');
+        checkUpdateStateOnLoad();
+        checkUrlCustomerBarcodeParam();
       }, 400);
       fetchAllData(false);
+    } else if (data.status === 'session_active') {
+      errorEl.textContent = "يوجد جهاز نشط يستخدم البرنامج حالياً؛ لا يمكن الدخول حتى يتم إغلاق الجلسة الحالية.";
+      loginBtn.disabled = false;
+      loginBtn.innerHTML = `<span class="material-symbols-rounded">login</span> دخول للنظام`;
     } else {
-      errorEl.textContent = "رمز الدخول غير صحيح!";
+      errorEl.textContent = data.message || "رمز الدخول غير صحيح!";
       loginBtn.disabled = false;
       loginBtn.innerHTML = `<span class="material-symbols-rounded">login</span> دخول للنظام`;
     }
@@ -971,10 +1622,116 @@ async function verifyInitialLogin() {
 function applyOfficeProfile() {
   if (officeProfile) {
     document.getElementById('header-office-title').textContent = officeProfile.name;
-    document.getElementById('set-office-name').textContent = officeProfile.name;
-    document.getElementById('set-office-phone').textContent = officeProfile.phone;
-    document.getElementById('set-office-address').textContent = officeProfile.address;
   }
+}
+
+function buildDailyReportData() {
+  const usdData = getLocalUsdData();
+  const allTrans = [...transactions, ...usdData.transactions];
+  const todayStr = new Date().toLocaleDateString('ar-IQ');
+
+  const todayTrans = allTrans.filter(t => String(t.date || '').trim() === todayStr.trim());
+  const sourceList = todayTrans.length > 0 ? todayTrans : allTrans.slice(0, 15);
+
+  let debtIQD = 0, paidIQD = 0, debtUSD = 0, paidUSD = 0;
+  sourceList.forEach(t => {
+    const curr = t.currency || 'IQD';
+    const amt = Number(t.amount || 0);
+    if (curr === 'USD') {
+      if (t.type === 'DEBT') debtUSD += amt;
+      if (t.type === 'PAYMENT') paidUSD += amt;
+    } else {
+      if (t.type === 'DEBT') debtIQD += amt;
+      if (t.type === 'PAYMENT') paidIQD += amt;
+    }
+  });
+
+  return {
+    generatedAt: Date.now(),
+    label: todayTrans.length > 0 ? `حركات اليوم (${todayStr})` : `أحدث الحركات المسجلة`,
+    count: sourceList.length,
+    debtIQD,
+    paidIQD,
+    debtUSD,
+    paidUSD,
+    items: sourceList.slice(0, 15)
+  };
+}
+
+function renderDailyReports(forceRefresh = false) {
+  const container = document.getElementById('daily-reports-content');
+  const updatedLabel = document.getElementById('daily-report-updated-label');
+  if (!container) return;
+
+  let report = null;
+  try {
+    report = JSON.parse(localStorage.getItem(KEYS.DAILY_REPORT_CACHE) || 'null');
+  } catch (e) {}
+
+  const now = Date.now();
+  if (forceRefresh || !report || (now - Number(report.generatedAt || 0)) >= DAILY_REPORT_INTERVAL_MS) {
+    report = buildDailyReportData();
+    localStorage.setItem(KEYS.DAILY_REPORT_CACHE, JSON.stringify(report));
+  }
+
+  if (updatedLabel) {
+    updatedLabel.textContent = `آخر تحديث: ${formatFullDateTimeAr(report.generatedAt)} (كل 24 ساعة)`;
+  }
+
+  const rowsHtml = report.items.length > 0
+    ? report.items.map(item => {
+        const cust = customers.find(c => String(c.id) === String(item.customerId));
+        const custName = item.customerName || (cust ? cust.name : (item.customerId || 'زبون'));
+        const currSym = item.currency === 'USD' ? '$' : 'د.ع';
+        const isDebt = item.type === 'DEBT';
+        const movementTypeLabel = isDebt ? 'إضافة دين' : 'تسديد دين';
+        return `
+          <div class="history-item" style="padding:8px 0; font-size:0.84rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <div>
+                <b>${custName}</b>
+                <span style="margin-right:6px; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:700; background:${isDebt ? 'var(--danger-container)' : 'var(--success-container)'}; color:${isDebt ? 'var(--danger)' : 'var(--success)'};">${movementTypeLabel}</span>
+              </div>
+              <strong style="color:${isDebt ? 'var(--danger)' : 'var(--success)'};">${Number(item.amount || 0).toLocaleString()} ${currSym}</strong>
+            </div>
+            <div style="font-size:0.74rem; color:var(--muted); margin-top:2px;">نوع الحركة: ${movementTypeLabel} • ${item.details || 'بدون ملاحظات'} • ${item.fullDate || item.date || ''}</div>
+          </div>
+        `;
+      }).join('')
+    : `<p style="text-align:center; color:var(--muted); font-size:0.84rem; margin:8px 0;">لا توجد حركات مسجلة حالياً</p>`;
+
+  container.innerHTML = `
+    <div style="font-size:0.8rem; color:var(--muted); margin-bottom:8px;">${report.label} • عدد الحركات: <b>${report.count}</b></div>
+    <div class="balance-grid" style="margin-bottom:10px;">
+      <div class="bal-box" style="padding:8px;">
+        <span>ديون (د.ع)</span>
+        <strong style="font-size:0.95rem; color:var(--danger);">${report.debtIQD.toLocaleString()} د.ع</strong>
+      </div>
+      <div class="bal-box" style="padding:8px;">
+        <span>مدفوعات (د.ع)</span>
+        <strong style="font-size:0.95rem; color:var(--success);">${report.paidIQD.toLocaleString()} د.ع</strong>
+      </div>
+      <div class="bal-box" style="padding:8px;">
+        <span>ديون ($)</span>
+        <strong style="font-size:0.95rem; color:var(--danger);">${report.debtUSD.toLocaleString()} $</strong>
+      </div>
+      <div class="bal-box" style="padding:8px;">
+        <span>مدفوعات ($)</span>
+        <strong style="font-size:0.95rem; color:var(--success);">${report.paidUSD.toLocaleString()} $</strong>
+      </div>
+    </div>
+    <div style="max-height:280px; overflow-y:auto; background:var(--surface-container); padding:8px 12px; border-radius:var(--r-sm);">
+      ${rowsHtml}
+    </div>
+  `;
+}
+
+function startDailyReportAutoCycle() {
+  renderDailyReports(false);
+  if (dailyReportTimer) clearInterval(dailyReportTimer);
+  dailyReportTimer = setInterval(() => {
+    renderDailyReports(true);
+  }, DAILY_REPORT_INTERVAL_MS);
 }
 
 async function fetchAllData(showNotify = false) {
@@ -982,9 +1739,12 @@ async function fetchAllData(showNotify = false) {
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'getAll' })
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getAll', deviceId: getOrCreateDeviceId() })
     });
-    const data = await res.json();
+    const text = await res.text();
+    const data = JSON.parse(text);
     if (data.status === 'success') {
       customers = data.customers || [];
       transactions = data.transactions || [];
@@ -994,9 +1754,15 @@ async function fetchAllData(showNotify = false) {
         officeProfile = data.profile;
         applyOfficeProfile();
       }
+      applyRemoteUpdatePayload(data);
+      await fetchVersionFromJson();
+      checkUpdateStateOnLoad();
       renderCustomersList();
+      renderCustomersTabList();
+      renderDailyReports(true);
       renderCreditorDebtsList();
       renderAmanatList();
+      checkUrlCustomerBarcodeParam();
       if (showNotify) showToast("تم تحديث البيانات بنجاح ✓");
     }
   } catch (e) {
@@ -1038,9 +1804,13 @@ function getCustomerFinances(custId) {
     if (t.type === 'PAYMENT') paidUSD += Number(t.amount);
   });
 
-  const combinedHistory = [...custTrans, ...localCustTrans].sort((a,b) => new Date(b.date) - new Date(a.date));
+  const combinedHistory = [...custTrans, ...localCustTrans].sort((a,b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date));
 
   return {
+    totalDebtIQD: debtIQD,
+    totalPaidIQD: paidIQD,
+    totalDebtUSD: debtUSD,
+    totalPaidUSD: paidUSD,
     remainingIQD: debtIQD - paidIQD,
     remainingUSD: debtUSD - paidUSD,
     history: combinedHistory
@@ -1048,8 +1818,9 @@ function getCustomerFinances(custId) {
 }
 
 function renderCustomersList() {
-  const query = document.getElementById('search-input').value.toLowerCase();
+  const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
   const listEl = document.getElementById('customers-list');
+  if (!listEl) return;
   listEl.innerHTML = '';
 
   let totalIQD = 0;
@@ -1065,15 +1836,12 @@ function renderCustomersList() {
   document.getElementById('total-remaining-usd').textContent = totalUSD.toLocaleString() + ' $';
   document.getElementById('total-customers').textContent = customers.length;
 
-  const filtered = customers.filter(c => 
-    c.name.toLowerCase().includes(query) || 
-    String(c.phone).includes(query) || 
-    String(c.gov || '').toLowerCase().includes(query) ||
-    String(c.id).toLowerCase() === query.trim()
+  const filtered = customers.filter(c =>
+    String(c.name || '').toLowerCase().includes(query)
   );
 
   if (filtered.length === 0) {
-    listEl.innerHTML = `<p style="text-align:center; color:var(--muted); padding:16px;">لا توجد نتائج مطابقة</p>`;
+    listEl.innerHTML = `<p style="text-align:center; color:var(--muted); padding:16px; margin:0;">لا توجد نتائج مطابقة</p>`;
     return;
   }
 
@@ -1098,7 +1866,50 @@ function renderCustomersList() {
       </div>
       <div class="cust-debt" style="color: var(--danger)">
         ${debtText.join(' | ')}
-        <span style="display:block; font-size:0.68rem; font-weight:400; color:var(--muted)">المتبقي</span>
+        <span style="display:block; font-size:0.65rem; font-weight:400; color:var(--muted)">المتبقي</span>
+      </div>
+    `;
+    listEl.appendChild(card);
+  });
+}
+
+function renderCustomersTabList() {
+  const query = (document.getElementById('customers-tab-search-input')?.value || '').toLowerCase().trim();
+  const listEl = document.getElementById('customers-tab-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  const filtered = customers.filter(c =>
+    String(c.name || '').toLowerCase().includes(query)
+  );
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = `<p style="text-align:center; color:var(--muted); padding:16px; margin:0;">لا توجد نتائج مطابقة</p>`;
+    return;
+  }
+
+  filtered.forEach(c => {
+    const fin = getCustomerFinances(c.id);
+    const avatarHTML = c.photo
+      ? `<img src="${c.photo}" class="avatar">`
+      : `<div class="avatar">${c.name.charAt(0)}</div>`;
+
+    let debtText = [];
+    if (fin.remainingIQD !== 0 || fin.remainingUSD === 0) debtText.push(`${fin.remainingIQD.toLocaleString()} د.ع`);
+    if (fin.remainingUSD !== 0) debtText.push(`${fin.remainingUSD.toLocaleString()} $`);
+
+    const card = document.createElement('div');
+    card.className = 'customer-card';
+    card.onclick = () => openCustomerDetails(c.id);
+    card.innerHTML = `
+      ${avatarHTML}
+      <div class="cust-info">
+        <div class="cust-name">${c.name}</div>
+        <div class="cust-sub">${c.gov} • ${c.phone}</div>
+      </div>
+      <div class="cust-debt" style="color: var(--danger)">
+        ${debtText.join(' | ')}
+        <span style="display:block; font-size:0.65rem; font-weight:400; color:var(--muted)">المتبقي</span>
       </div>
     `;
     listEl.appendChild(card);
@@ -1134,17 +1945,33 @@ function processReceiptImage(event) {
     const img = new Image();
     img.onload = function() {
       const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 400;
-      const scale = MAX_WIDTH / img.width;
-      canvas.width = MAX_WIDTH;
+      const MAX_WIDTH = 520;
+      const scale = Math.min(1, MAX_WIDTH / img.width);
+      canvas.width = img.width * scale;
       canvas.height = img.height * scale;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      base64ReceiptPhoto = canvas.toDataURL('image/jpeg', 0.6);
+      base64ReceiptPhoto = canvas.toDataURL('image/jpeg', 0.72);
+
+      const previewBox = document.getElementById('t-receipt-preview');
+      const previewImg = document.getElementById('t-receipt-preview-img');
+      if (previewBox && previewImg) {
+        previewImg.src = base64ReceiptPhoto;
+        previewBox.classList.remove('hidden');
+      }
+      showToast("تم إرفاق صورة الوصل بنجاح ✓");
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function clearReceiptAttachment() {
+  base64ReceiptPhoto = "";
+  const fileInput = document.getElementById('t-photo');
+  if (fileInput) fileInput.value = "";
+  const previewBox = document.getElementById('t-receipt-preview');
+  if (previewBox) previewBox.classList.add('hidden');
 }
 
 function processAmanaImage(event) {
@@ -1168,10 +1995,28 @@ function processAmanaImage(event) {
   reader.readAsDataURL(file);
 }
 
-function openLightbox(imgSrc) {
+function openLightbox(imgSrc, metaText = '', receiptData = null) {
   const lb = document.getElementById('lightbox-modal');
   const img = document.getElementById('lightbox-img');
+  const metaEl = document.getElementById('lightbox-meta');
+  const shareBtn = document.getElementById('lightbox-share-btn');
   img.src = imgSrc;
+  if (metaEl) metaEl.textContent = metaText || '';
+  if (shareBtn) {
+    if (receiptData) {
+      shareBtn.classList.remove('hidden');
+      shareBtn.onclick = () => printOrShareReceipt(
+        receiptData.customerName,
+        receiptData.type,
+        receiptData.amount,
+        receiptData.currency,
+        receiptData.details,
+        receiptData.date
+      );
+    } else {
+      shareBtn.classList.add('hidden');
+    }
+  }
   lb.classList.remove('hidden');
 
   let pressTimer;
@@ -1243,7 +2088,8 @@ async function saveCustomerData(e) {
       amount: realUsd,
       currency: 'USD',
       details: 'الدين الافتتاحي بالدولار',
-      date: new Date().toLocaleDateString('ar-IQ')
+      date: new Date().toLocaleDateString('ar-IQ'),
+      fullDate: formatFullDateTimeAr(new Date())
     });
     saveLocalUsdData(usdData);
   } else if (editId && realUsd > 0) {
@@ -1255,7 +2101,8 @@ async function saveCustomerData(e) {
       amount: realUsd,
       currency: 'USD',
       details: 'إضافة رصيد دولار',
-      date: new Date().toLocaleDateString('ar-IQ')
+      date: new Date().toLocaleDateString('ar-IQ'),
+      fullDate: formatFullDateTimeAr(new Date())
     });
     saveLocalUsdData(usdData);
   }
@@ -1275,7 +2122,12 @@ async function saveCustomerData(e) {
 
   closeModal('customer-modal');
   showToast("جاري حفظ البيانات...");
-  await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+  await fetch(SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
   await fetchAllData(true);
 }
 
@@ -1313,7 +2165,12 @@ async function saveCreditorDebt(e) {
 
   closeModal('creditor-debt-modal');
   showToast("جاري الحفظ في السحابة...");
-  await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+  await fetch(SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
   await fetchAllData(true);
 }
 
@@ -1392,9 +2249,12 @@ async function confirmCreditorPayment() {
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'payCreditorDebt', id, amount: payAmt, currency })
     });
-    const data = await res.json();
+    const text = await res.text();
+    const data = JSON.parse(text);
     if (data.status === 'success') {
       showToast("تم تسجيل التسديد وتحديث كوكل شيت بنجاح ✓");
       await fetchAllData(true);
@@ -1454,7 +2314,12 @@ async function saveAmana(e) {
 
   closeModal('amana-modal');
   showToast("جاري الحفظ في السحابة مع الصورة...");
-  await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+  await fetch(SCRIPT_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
   await fetchAllData(true);
 }
 
@@ -1489,7 +2354,7 @@ function renderAmanatList() {
     if (iqd > 0 || usd === 0) amtText.push(`${iqd.toLocaleString()} د.ع`);
     if (usd > 0) amtText.push(`${usd.toLocaleString()} $`);
 
-    const amanaPhotoThumb = a.photo ? `<img src="${a.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;cursor:pointer;margin-top:4px;" onclick="openLightbox('${a.photo}')" title="انقر لتكبير الوصل">` : '';
+    const amanaPhotoThumb = a.photo ? `<img src="${a.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;cursor:pointer;margin-top:4px;" onclick="openLightbox('${a.photo}', '${a.person} — ${a.item}')" title="انقر لتكبير الوصل">` : '';
 
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -1521,6 +2386,8 @@ async function toggleAmanaStatus(id) {
   showToast("جاري التحديث...");
   await fetch(SCRIPT_URL, {
     method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ action: 'toggleAmana', id, status: newStatus })
   });
   await fetchAllData(true);
@@ -1565,9 +2432,12 @@ async function confirmDeleteWithPin() {
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'auth', code: entered })
     });
-    const data = await res.json();
+    const text = await res.text();
+    const data = JSON.parse(text);
 
     if (data.status === 'success') {
       localStorage.setItem(KEYS.ATTEMPTS, '3');
@@ -1577,13 +2447,28 @@ async function confirmDeleteWithPin() {
       if (action.type === 'customer') {
         closeModal('details-modal');
         showToast("جاري حذف الزبون...");
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteCustomer', id: action.id }) });
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'deleteCustomer', id: action.id })
+        });
       } else if (action.type === 'creditorDebt') {
         showToast("جاري حذف الدين...");
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteCreditorDebt', id: action.id }) });
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'deleteCreditorDebt', id: action.id })
+        });
       } else if (action.type === 'amana') {
         showToast("جاري حذف الأمانة...");
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteAmana', id: action.id }) });
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'deleteAmana', id: action.id })
+        });
       }
       await fetchAllData(true);
     } else {
@@ -1668,86 +2553,207 @@ function printOrShareReceipt(customerName, type, amount, currency, details, date
   }
 }
 
-function saveBarcodeImage() {
-  const svgEl = document.getElementById('cust-barcode');
-  if (!svgEl) return;
-  
-  const svgData = new XMLSerializer().serializeToString(svgEl);
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  const img = new Image();
-  
-  img.onload = function() {
-    canvas.width = img.width + 40;
-    canvas.height = img.height + 40;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 20, 20);
-    
-    const pngUrl = canvas.toDataURL('image/png');
-    const downloadLink = document.createElement('a');
-    downloadLink.href = pngUrl;
-    downloadLink.download = `Barcode_${Date.now()}.png`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-    showToast("تم حفظ الباركود كصورة في الجهاز بنجاح ✓");
-  };
-  
-  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+function getCustomerBarcodePayload(customerId) {
+  const baseUrl = window.location.href.split('#')[0].split('?')[0];
+  return `${baseUrl}?barcodeCustomer=${encodeURIComponent(String(customerId))}`;
 }
 
-function openCustomerDetails(id) {
+function renderBarcodeToSvg(selector, customerId) {
+  const payload = getCustomerBarcodePayload(customerId);
+  JsBarcode(selector, payload, {
+    format: "CODE128",
+    lineColor: "#000",
+    width: 1.4,
+    height: 54,
+    displayValue: false,
+    margin: 2
+  });
+}
+
+function openZoomedBarcode(customerId, customerName) {
+  zoomedBarcodeCustomerId = customerId;
+  const nameEl = document.getElementById('barcode-zoom-name');
+  if (nameEl) nameEl.textContent = customerName || '';
+  document.getElementById('barcode-zoom-modal').classList.remove('hidden');
+  setTimeout(() => {
+    try {
+      renderBarcodeToSvg("#zoomed-barcode", customerId);
+    } catch (e) {}
+  }, 50);
+}
+
+function saveBarcodeImage(customerId) {
+  const svgEl = document.querySelector('#zoomed-barcode:not([style*="display: none"])') || document.getElementById('cust-barcode') || document.getElementById('zoomed-barcode');
+  if (!svgEl) return;
+
+  const serializer = new XMLSerializer();
+  const svgStr = serializer.serializeToString(svgEl);
+  const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+
+  const img = new Image();
+  img.onload = function() {
+    const canvas = document.createElement('canvas');
+    const pad = 24;
+    canvas.width = (img.width || 220) + pad * 2;
+    canvas.height = (img.height || 220) + pad * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, pad, pad);
+
+    canvas.toBlob(function(blob) {
+      URL.revokeObjectURL(url);
+      if (!blob) {
+        showToast("تعذر إنشاء صورة الباركود");
+        return;
+      }
+      const pngUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = pngUrl;
+      a.download = `Barcode_${customerId || Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(pngUrl), 1500);
+      showToast("تم تنزيل الباركود في الجهاز ✓");
+    }, 'image/png');
+  };
+  img.onerror = function() {
+    URL.revokeObjectURL(url);
+    showToast("تعذر تصدير الباركود كصورة");
+  };
+  img.src = url;
+}
+
+function checkUrlCustomerBarcodeParam() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const scannedId = params.get('barcodeCustomer');
+    if (!scannedId) return;
+    const matched = customers.find(c => String(c.id).trim() === String(scannedId).trim());
+    if (matched) {
+      openCustomerDetails(matched.id, 'reports');
+    }
+  } catch (e) {}
+}
+
+function switchCustomerSubtab(subtab) {
+  activeCustomerSubtab = subtab;
+  ['add-debt', 'payments', 'reports', 'receipts-dates', 'receipt-images'].forEach(tab => {
+    const btn = document.getElementById(`subtab-btn-${tab}`);
+    const pane = document.getElementById(`subtab-pane-${tab}`);
+    if (btn) btn.classList.toggle('active', tab === subtab);
+    if (pane) pane.classList.toggle('hidden', tab !== subtab);
+  });
+}
+
+function openCustomerDetails(id, initialSubtab = 'add-debt') {
   const c = customers.find(x => String(x.id) === String(id));
   if (!c) return;
+  activeCustomerDetailsId = c.id;
+  activeCustomerSubtab = initialSubtab;
   const fin = getCustomerFinances(id);
 
   const avatarHTML = c.photo 
     ? `<img src="${c.photo}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--brand);margin:0 auto 10px;display:block">` 
     : `<div style="width:72px;height:72px;border-radius:50%;background:var(--secondary-container);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;margin:0 auto 10px">${c.name.charAt(0)}</div>`;
 
-  const historyHTML = fin.history.map(t => {
+  const enrichedHistory = fin.history.map(t => {
+    const fullDateText = t.fullDate || formatFullDateTimeAr(t.timestamp || Date.now());
+    return { ...t, fullDateText };
+  });
+
+  const paymentsList = enrichedHistory.filter(t => t.type === 'PAYMENT');
+  const paymentsHTML = paymentsList.map(t => {
     const curr = t.currency === 'USD' ? '$' : 'د.ع';
-    const photoThumbnail = t.photo ? `<img src="${t.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;cursor:pointer;margin-top:4px;" onclick="openLightbox('${t.photo}')" title="انقر لتكبير الوصل">` : '';
     return `
       <div class="history-item">
-        <div style="display:flex; justify-content:space-between; align-items:center">
-          <strong style="color:${t.type === 'DEBT' ? 'var(--danger)' : 'var(--success)'}">
-            ${t.type === 'DEBT' ? '+ دين جديد' : '✓ تسديد مبلغ'}
-          </strong>
-          <strong style="font-size:0.95rem">${Number(t.amount).toLocaleString()} ${curr}</strong>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="color:var(--success);">✓ تسديد مبلغ</strong>
+          <strong style="font-size:0.95rem; color:var(--success);">${Number(t.amount).toLocaleString()} ${curr}</strong>
         </div>
-        <p style="margin:2px 0; color:var(--muted)">${t.details || 'بدون ملاحظات'} (${t.date})</p>
-        ${photoThumbnail}
-        <br>
-        <button onclick="printOrShareReceipt('${c.name}', '${t.type}', '${t.amount}', '${t.currency || 'IQD'}', '${t.details || ''}', '${t.date}')" class="secondary" style="padding:4px 8px; font-size:0.72rem; width:auto; margin-top:4px;">
+        <p style="margin:2px 0; color:var(--muted); font-size:0.78rem;">${t.details || 'بدون ملاحظات'}</p>
+        <p style="margin:2px 0; color:var(--muted); font-size:0.74rem;">${t.fullDateText}</p>
+      </div>
+    `;
+  }).join('');
+
+  const reportsHTML = `
+    <div class="balance-grid" style="margin-bottom:10px;">
+      <div class="bal-box">
+        <span>إجمالي الديون (د.ع)</span>
+        <strong style="color:var(--danger)">${fin.totalDebtIQD.toLocaleString()} د.ع</strong>
+      </div>
+      <div class="bal-box">
+        <span>المدفوعات (د.ع)</span>
+        <strong style="color:var(--success)">${fin.totalPaidIQD.toLocaleString()} د.ع</strong>
+      </div>
+      <div class="bal-box">
+        <span>الباقي عليه (د.ع)</span>
+        <strong style="color:var(--brand)">${fin.remainingIQD.toLocaleString()} د.ع</strong>
+      </div>
+      <div class="bal-box">
+        <span>الباقي عليه ($)</span>
+        <strong style="color:var(--brand)">${fin.remainingUSD.toLocaleString()} $</strong>
+      </div>
+    </div>
+    <div style="font-size:0.8rem; color:var(--muted);">إجمالي المدفوعات بالدولار: <b>${fin.totalPaidUSD.toLocaleString()} $</b> من أصل <b>${fin.totalDebtUSD.toLocaleString()} $</b></div>
+  `;
+
+  const receiptsDatesHTML = enrichedHistory.map(t => {
+    const curr = t.currency === 'USD' ? '$' : 'د.ع';
+    const isDebt = t.type === 'DEBT';
+    return `
+      <div class="history-item">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="color:${isDebt ? 'var(--danger)' : 'var(--success)'};">${isDebt ? '+ وصل دين' : '✓ وصل دفعة'}</strong>
+          <strong style="font-size:0.92rem;">${Number(t.amount).toLocaleString()} ${curr}</strong>
+        </div>
+        <p style="margin:2px 0; color:var(--muted); font-size:0.78rem;">${t.details || 'بدون ملاحظات'}</p>
+        <p style="margin:2px 0; color:var(--brand); font-size:0.74rem; font-weight:700;">${t.fullDateText}</p>
+        <button onclick="printOrShareReceipt('${c.name}', '${t.type}', '${t.amount}', '${t.currency || 'IQD'}', '${t.details || ''}', '${t.fullDateText}')" class="secondary" style="padding:4px 8px; font-size:0.72rem; width:auto; margin-top:4px;">
           <span class="material-symbols-rounded" style="font-size:14px;">print</span> طباعة / مشاركة الوصل
         </button>
       </div>
     `;
   }).join('');
 
+  const receiptImagesList = enrichedHistory.filter(t => Boolean(t.photo));
+  const receiptImagesHTML = receiptImagesList.map((t, idx) => {
+    const curr = t.currency === 'USD' ? '$' : 'د.ع';
+    const safeDetails = String(t.details || '').replace(/'/g, "\\'");
+    const safeDate = String(t.fullDateText || '').replace(/'/g, "\\'");
+    const safeName = String(c.name || '').replace(/'/g, "\\'");
+    return `
+      <div class="history-item" style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <img id="receipt-img-${idx}" src="${t.photo}" style="width:54px;height:54px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid var(--line);" onclick="openLightbox(this.src, '${safeName} • ${Number(t.amount).toLocaleString()} ${curr} • ${safeDate}', {customerName:'${safeName}',type:'${t.type}',amount:'${t.amount}',currency:'${t.currency || 'IQD'}',details:'${safeDetails}',date:'${safeDate}'})" title="انقر لتكبير الوصل">
+            <div>
+              <strong style="font-size:0.88rem; color:${t.type === 'DEBT' ? 'var(--danger)' : 'var(--success)'};">${Number(t.amount).toLocaleString()} ${curr}</strong>
+              <div style="font-size:0.74rem; color:var(--muted);">${t.fullDateText}</div>
+              <div style="font-size:0.74rem; color:var(--muted);">${t.details || 'بدون ملاحظات'}</div>
+            </div>
+          </div>
+          <button onclick="printOrShareReceipt('${safeName}', '${t.type}', '${t.amount}', '${t.currency || 'IQD'}', '${safeDetails}', '${safeDate}')" class="secondary" style="padding:6px 10px; font-size:0.72rem; width:auto; margin:0; flex-shrink:0;">
+            <span class="material-symbols-rounded" style="font-size:15px;">print</span> طباعة ومشاركة الوصل
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
   document.getElementById('details-modal-content').innerHTML = `
-    <div style="text-align:center; margin-bottom:12px;">
+    <div style="text-align:center; margin-bottom:10px;">
       ${avatarHTML}
       <h2 style="margin:0; font-size:1.1rem">${c.name}</h2>
       <p style="margin:2px 0; font-size:0.8rem; color:var(--muted)">${c.phone}</p>
     </div>
 
-    <div class="barcode-container-box" id="barcode-box-trigger" title="اضغط مطولاً أو انقر للحفظ">
+    <div class="barcode-square-box" id="barcode-box-trigger" title="اضغط للتكبير أو اضغط مطولاً للتنزيل">
       <svg id="cust-barcode"></svg>
-      <small>📱 اضغط مطولاً على الباركود لحفظه في الجهاز</small>
-    </div>
-
-    <div class="balance-grid" style="margin-bottom:10px;">
-      <div class="bal-box">
-        <span>المتبقي (د.ع)</span>
-        <strong style="color:var(--danger)">${fin.remainingIQD.toLocaleString()} د.ع</strong>
-      </div>
-      <div class="bal-box">
-        <span>المتبقي ($)</span>
-        <strong style="color:var(--danger)">${fin.remainingUSD.toLocaleString()} $</strong>
-      </div>
+      <small>نقر: تكبير • مطول: تنزيل</small>
     </div>
 
     <div style="background:var(--surface-container); padding:10px; border-radius:var(--r-sm); font-size:0.82rem; margin-bottom:12px;">
@@ -1756,8 +2762,16 @@ function openCustomerDetails(id) {
       <div><b>أقرب نقطة دالة:</b> ${c.landmark || 'لا يوجد'}</div>
     </div>
 
-    <div style="background:var(--surface-container); padding:10px; border-radius:var(--r-sm); margin-bottom:12px;">
-      <h4 style="margin:0 0 6px; font-size:0.9rem">تسجيل حركة مالية</h4>
+    <div class="customer-subtabs">
+      <button type="button" id="subtab-btn-add-debt" class="customer-subtab-btn ${activeCustomerSubtab === 'add-debt' ? 'active' : ''}" onclick="switchCustomerSubtab('add-debt')">إضافة دين جديد</button>
+      <button type="button" id="subtab-btn-payments" class="customer-subtab-btn ${activeCustomerSubtab === 'payments' ? 'active' : ''}" onclick="switchCustomerSubtab('payments')">المدفوعات</button>
+      <button type="button" id="subtab-btn-reports" class="customer-subtab-btn ${activeCustomerSubtab === 'reports' ? 'active' : ''}" onclick="switchCustomerSubtab('reports')">التقارير</button>
+      <button type="button" id="subtab-btn-receipts-dates" class="customer-subtab-btn ${activeCustomerSubtab === 'receipts-dates' ? 'active' : ''}" onclick="switchCustomerSubtab('receipts-dates')">الوصولات بالتواريخ</button>
+      <button type="button" id="subtab-btn-receipt-images" class="customer-subtab-btn ${activeCustomerSubtab === 'receipt-images' ? 'active' : ''}" onclick="switchCustomerSubtab('receipt-images')">صور الوصولات</button>
+    </div>
+
+    <div id="subtab-pane-add-debt" class="${activeCustomerSubtab === 'add-debt' ? '' : 'hidden'}" style="background:var(--surface-container); padding:10px; border-radius:var(--r-sm); margin-bottom:12px;">
+      <h4 style="margin:0 0 6px; font-size:0.9rem">إضافة دين جديد / حركة مالية</h4>
       <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px;">
         <input type="number" id="t-amount" placeholder="المبلغ" style="margin-bottom:6px;">
         <select id="t-currency" style="margin-bottom:6px;">
@@ -1767,8 +2781,17 @@ function openCustomerDetails(id) {
       </div>
       <input type="text" id="t-details" placeholder="ملاحظة أو رقم الوصل" style="margin-bottom:6px;">
       
-      <label style="font-size:0.80rem; color:var(--muted); display:block; margin-top:4px;">صورة وصل الدين (اختياري)</label>
+      <label style="font-size:0.80rem; color:var(--muted); display:block; margin-top:4px;">صورة وصل الدين (تظهر فوراً عند الإضافة)</label>
       <input type="file" id="t-photo" accept="image/*" onchange="processReceiptImage(event)" style="margin-bottom:6px;">
+
+      <div id="t-receipt-preview" class="receipt-preview-box hidden">
+        <img id="t-receipt-preview-img" onclick="openLightbox(this.src, 'معاينة صورة الوصل المرفقة')" title="انقر لتكبير الوصل">
+        <div style="flex:1; font-size:0.78rem;">
+          <div style="color:var(--success); font-weight:700;">تم تجهيز صورة الوصل ✓</div>
+          <div style="color:var(--muted); font-size:0.72rem;">ستظهر مباشرة مع الدين بعد الحفظ</div>
+        </div>
+        <button type="button" class="danger" onclick="clearReceiptAttachment()" style="width:auto; padding:6px 10px; font-size:0.72rem; margin:0;">إزالة</button>
+      </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
         <button onclick="addTransaction('${c.id}', 'DEBT')" class="danger" style="margin:0; padding:10px; font-size:0.85rem;">+ إضافة دين</button>
@@ -1776,9 +2799,20 @@ function openCustomerDetails(id) {
       </div>
     </div>
 
-    <h4 style="margin:0 0 6px; font-size:0.9rem">سجل الحركات</h4>
-    <div style="max-height:160px; overflow-y:auto; background:var(--surface-container); padding:8px; border-radius:var(--r-sm); margin-bottom:12px;">
-      ${historyHTML || '<p style="text-align:center; color:var(--muted); margin:8px 0">لا توجد حركات مسجلة</p>'}
+    <div id="subtab-pane-payments" class="${activeCustomerSubtab === 'payments' ? '' : 'hidden'}" style="max-height:190px; overflow-y:auto; background:var(--surface-container); padding:8px; border-radius:var(--r-sm); margin-bottom:12px;">
+      ${paymentsHTML || '<p style="text-align:center; color:var(--muted); margin:8px 0">لا توجد مدفوعات مسجلة</p>'}
+    </div>
+
+    <div id="subtab-pane-reports" class="${activeCustomerSubtab === 'reports' ? '' : 'hidden'}" style="background:var(--surface-container); padding:10px; border-radius:var(--r-sm); margin-bottom:12px;">
+      ${reportsHTML}
+    </div>
+
+    <div id="subtab-pane-receipts-dates" class="${activeCustomerSubtab === 'receipts-dates' ? '' : 'hidden'}" style="max-height:200px; overflow-y:auto; background:var(--surface-container); padding:8px; border-radius:var(--r-sm); margin-bottom:12px;">
+      ${receiptsDatesHTML || '<p style="text-align:center; color:var(--muted); margin:8px 0">لا توجد وصولات بالتواريخ</p>'}
+    </div>
+
+    <div id="subtab-pane-receipt-images" class="${activeCustomerSubtab === 'receipt-images' ? '' : 'hidden'}" style="max-height:210px; overflow-y:auto; background:var(--surface-container); padding:8px; border-radius:var(--r-sm); margin-bottom:12px;">
+      ${receiptImagesHTML || '<p style="text-align:center; color:var(--muted); margin:8px 0">لا توجد صور وصولات مرفقة</p>'}
     </div>
 
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
@@ -1793,26 +2827,87 @@ function openCustomerDetails(id) {
   base64ReceiptPhoto = "";
 
   try {
-    JsBarcode("#cust-barcode", c.id, {
-      format: "CODE128",
-      lineColor: "#000",
-      width: 2,
-      height: 45,
-      displayValue: true
-    });
+    renderBarcodeToSvg("#cust-barcode", c.id);
 
     const barcodeBox = document.getElementById('barcode-box-trigger');
+    let longPressTriggered = false;
     let pressTimer;
-    barcodeBox.oncontextmenu = (e) => { e.preventDefault(); saveBarcodeImage(); };
+
+    barcodeBox.onclick = () => {
+      if (longPressTriggered) {
+        longPressTriggered = false;
+        return;
+      }
+      openZoomedBarcode(c.id, c.name);
+    };
+    barcodeBox.oncontextmenu = (e) => {
+      e.preventDefault();
+      longPressTriggered = true;
+      saveBarcodeImage(c.id);
+    };
     barcodeBox.addEventListener('touchstart', () => {
-      pressTimer = setTimeout(() => { saveBarcodeImage(); }, 750);
-    });
+      longPressTriggered = false;
+      pressTimer = setTimeout(() => {
+        longPressTriggered = true;
+        saveBarcodeImage(c.id);
+      }, 600);
+    }, { passive: true });
     barcodeBox.addEventListener('touchend', () => clearTimeout(pressTimer));
     barcodeBox.addEventListener('mousedown', () => {
-      pressTimer = setTimeout(() => { saveBarcodeImage(); }, 750);
+      longPressTriggered = false;
+      pressTimer = setTimeout(() => {
+        longPressTriggered = true;
+        saveBarcodeImage(c.id);
+      }, 600);
     });
     barcodeBox.addEventListener('mouseup', () => clearTimeout(pressTimer));
   } catch (e) {}
+}
+
+function recordMovementImmediatelyToReports(customerId, type, amount, currency, details, nowObj, photo = "") {
+  const cust = customers.find(c => String(c.id) === String(customerId));
+  const customerName = cust ? cust.name : String(customerId);
+  const dateStr = nowObj.toLocaleDateString('ar-IQ');
+  const fullDateStr = formatFullDateTimeAr(nowObj);
+  const newTx = {
+    id: 'tx_' + nowObj.getTime() + '_' + Math.random().toString(36).slice(2, 6),
+    customerId: String(customerId),
+    customerName,
+    type,
+    amount: Number(amount),
+    currency,
+    details,
+    date: dateStr,
+    fullDate: fullDateStr,
+    timestamp: nowObj.getTime(),
+    photo
+  };
+
+  transactions.unshift(newTx);
+
+  let cached = null;
+  try {
+    cached = JSON.parse(localStorage.getItem(KEYS.DAILY_REPORT_CACHE) || 'null');
+  } catch (e) {}
+
+  if (!cached || !Array.isArray(cached.items)) {
+    cached = buildDailyReportData();
+  }
+
+  const amt = Number(amount);
+  if (currency === 'USD') {
+    if (type === 'DEBT') cached.debtUSD = Number(cached.debtUSD || 0) + amt;
+    if (type === 'PAYMENT') cached.paidUSD = Number(cached.paidUSD || 0) + amt;
+  } else {
+    if (type === 'DEBT') cached.debtIQD = Number(cached.debtIQD || 0) + amt;
+    if (type === 'PAYMENT') cached.paidIQD = Number(cached.paidIQD || 0) + amt;
+  }
+
+  cached.count = Number(cached.count || 0) + 1;
+  cached.generatedAt = nowObj.getTime();
+  cached.items = [newTx, ...(cached.items || [])].slice(0, 20);
+  localStorage.setItem(KEYS.DAILY_REPORT_CACHE, JSON.stringify(cached));
+  renderDailyReports(false);
 }
 
 async function addTransaction(customerId, type) {
@@ -1825,52 +2920,41 @@ async function addTransaction(customerId, type) {
   }
 
   const photo = base64ReceiptPhoto || "";
-  base64ReceiptPhoto = "";
+  const nowObj = new Date();
+  const dateStr = nowObj.toLocaleDateString('ar-IQ');
+  const fullDateStr = formatFullDateTimeAr(nowObj);
 
+  if (photo) {
+    const usdData = getLocalUsdData();
+    usdData.transactions.unshift({
+      id: 'local_tr_' + Date.now(),
+      customerId: String(customerId),
+      type,
+      amount: Number(amount),
+      currency,
+      details,
+      date: dateStr,
+      fullDate: fullDateStr,
+      timestamp: nowObj.getTime(),
+      photo
+    });
+    saveLocalUsdData(usdData);
+  }
+
+  recordMovementImmediatelyToReports(customerId, type, amount, currency, details, nowObj, photo);
+  base64ReceiptPhoto = "";
   closeModal('details-modal');
-  showToast("جاري تسجيل الحركة وصورة الوصل...");
+  switchTab('daily-reports');
+  showToast("تمت إضافة الحركة للتقارير والحركات فوراً ✓");
+
   try {
     await fetch(SCRIPT_URL, {
       method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'addTransaction', customerId, type, amount, currency, details, photo })
     });
   } catch(e) {}
-  await fetchAllData(true);
-}
-
-function openScannerModal() {
-  document.getElementById('scanner-modal').classList.remove('hidden');
-  setTimeout(() => {
-    if (!html5QrCode) {
-      html5QrCode = new Html5Qrcode("reader");
-    }
-    html5QrCode.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 150 } },
-      (decodedText) => {
-        closeScannerModal();
-        document.getElementById('search-input').value = decodedText;
-        renderCustomersList();
-        showToast(`تم التعرف على الباركود: ${decodedText}`);
-      },
-      (errorMessage) => {}
-    ).catch(err => {
-      alert("تعذر تشغيل كاميرا الجهاز. تأكد من فتح الصفحة عبر رابط آمن (HTTPS) ومنح صلاحيات الكاميرا للمتصفح.");
-      closeScannerModal();
-    });
-  }, 300);
-}
-
-function closeScannerModal() {
-  if (html5QrCode) {
-    html5QrCode.stop().then(() => {
-      return html5QrCode.clear();
-    }).catch(() => {}).finally(() => {
-      document.getElementById('scanner-modal').classList.add('hidden');
-    });
-  } else {
-    document.getElementById('scanner-modal').classList.add('hidden');
-  }
 }
 
 function closeModal(id) {
@@ -1879,27 +2963,46 @@ function closeModal(id) {
 
 function switchTab(tab) {
   document.getElementById('view-home').classList.toggle('hidden', tab !== 'home');
+  document.getElementById('view-customers-list').classList.toggle('hidden', tab !== 'customers-list');
   document.getElementById('view-creditor-debts').classList.toggle('hidden', tab !== 'creditor-debts');
   document.getElementById('view-amanat').classList.toggle('hidden', tab !== 'amanat');
+  document.getElementById('view-daily-reports').classList.toggle('hidden', tab !== 'daily-reports');
   document.getElementById('view-settings').classList.toggle('hidden', tab !== 'settings');
 
   document.getElementById('nav-home').classList.toggle('active', tab === 'home');
+  document.getElementById('nav-customers').classList.toggle('active', tab === 'customers-list');
   document.getElementById('nav-creditor').classList.toggle('active', tab === 'creditor-debts');
   document.getElementById('nav-amanat').classList.toggle('active', tab === 'amanat');
-  document.getElementById('nav-settings').classList.toggle('active', tab === 'settings');
+
+  document.getElementById('drawer-btn-reports')?.classList.toggle('active', tab === 'daily-reports');
+  document.getElementById('drawer-btn-settings')?.classList.toggle('active', tab === 'settings');
 
   if (tab === 'home') renderCustomersList();
+  if (tab === 'customers-list') renderCustomersTabList();
   if (tab === 'creditor-debts') renderCreditorDebtsList();
   if (tab === 'amanat') renderAmanatList();
+  if (tab === 'daily-reports') renderDailyReports(false);
   window.scrollTo(0, 0);
 }
+
+window.addEventListener('beforeunload', releaseActiveSession);
+window.addEventListener('pagehide', releaseActiveSession);
 
 window.addEventListener('DOMContentLoaded', async () => {
   const savedTheme = localStorage.getItem(KEYS.THEME) || 'dark';
   const savedTemplate = localStorage.getItem(KEYS.TEMPLATE) || 'default';
+  const savedListMode = localStorage.getItem(KEYS.LIST_MODE) || 'box';
   setTheme(savedTheme);
   setTemplate(savedTemplate);
+  setCustomerListMode(savedListMode);
   checkLockoutStatus();
+  startDailyReportAutoCycle();
+  startMandatoryUpdateWatcher();
+
+  await checkRemoteProjectUpdate();
+  if (checkUpdateStateOnLoad()) {
+    return;
+  }
 
   const mainApp = document.getElementById('main-app-container');
   const onboardingScreen = document.getElementById('onboarding-screen');
@@ -1915,9 +3018,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'checkSetup' })
     });
-    const data = await res.json();
+    const text = await res.text();
+    const data = JSON.parse(text);
 
     if (!data.isSetup) {
       localStorage.removeItem(KEYS.FIRST_LOGIN_DONE);
