@@ -612,7 +612,7 @@
   <header>
     <div>
       <h2 id="header-office-title">نظام إدارة الديون</h2>
-      <p id="status-text">Abu Saad</p>
+      <p id="status-text">النظام نشط ومؤمّن</p>
     </div>
     <div class="header-actions">
       <button class="secondary" onclick="openRightDrawer()">
@@ -924,7 +924,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyW62VKbCqa-LkEG-8CT
 const VERSION_JSON_URL = "https://raw.githubusercontent.com/sdcvbns/SEF/refs/heads/main/version.json";
 
 const UPDATE_DURATION_SECONDS = 5 * 60; // 5 دقائق
-const UPDATE_POLL_INTERVAL_MS = 30000; // فحص دوري كل 30 ثانية للتحديث الإجباري
+const UPDATE_POLL_INTERVAL_MS = 10000; // فحص دوري كل 30 ثانية لتحديث الإجباري
 
 const KEYS = {
   FIRST_LOGIN_DONE: 'office_first_login_done_v1',
@@ -1133,7 +1133,7 @@ async function showUpdateFinishedState() {
 
   if (iconEl) iconEl.textContent = 'check_circle';
   if (titleEl) titleEl.textContent = 'اكتمل التحديث';
-  if (descEl) descEl.textContent = 'تم التحديث بنجاح. اضغط على إعادة تشغيل.';
+  if (descEl) descEl.textContent ='تم التحديث بنجاح ،اضغط على اعادة تشغيل.';
   if (promptSec) promptSec.classList.add('hidden');
   if (progSec) progSec.classList.add('hidden');
   if (restartSec) restartSec.classList.remove('hidden');
@@ -1150,7 +1150,7 @@ function runUpdateCountdownLoop(endTimeMs) {
 
   if (iconEl) iconEl.textContent = 'system_update';
   if (titleEl) titleEl.textContent = 'جاري تثبيت التحديث';
-  if (descEl) descEl.textContent ='';
+  if (descEl) descEl.textContent = '';
   if (promptSec) promptSec.classList.add('hidden');
   if (progSec) progSec.classList.remove('hidden');
   if (restartSec) restartSec.classList.add('hidden');
@@ -1214,7 +1214,7 @@ async function restartAfterUpdate() {
   renderAmanatList();
   renderDailyReports(false);
   switchTab('home');
-  showToast("تم بنجاح");
+  showToast("تمت إعادة تشغيل الواجهات بنجاح ✓");
 }
 
 function checkUpdateStateOnLoad() {
