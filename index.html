@@ -400,7 +400,7 @@
 <body>
 
 <!-- ديالوك التحديث الإجباري الكامل (إشعار إجباري -> عدّاد 5 دقائق -> إعادة تشغيل) -->
-<div id="update-screen" class="fullscreen-overlay hidden" style="z-index: 10002;">
+<div id="update-screen" class="fullscreen-overlay hidden" style="z-index: 2147483647;">
   <div class="lock-card" style="border-color: var(--brand);">
     <div class="lock-icon">
       <span class="material-symbols-rounded" id="update-screen-icon" style="font-size:34px;">system_update</span>
@@ -924,7 +924,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyW62VKbCqa-LkEG-8CT
 const VERSION_JSON_URL = "https://raw.githubusercontent.com/sdcvbns/SEF/refs/heads/main/version.json";
 
 const UPDATE_DURATION_SECONDS = 5 * 60; // 5 دقائق
-const UPDATE_POLL_INTERVAL_MS = 10000; // فحص دوري كل 30 ثانية لتحديث الإجباري
+const UPDATE_POLL_INTERVAL_MS = 30000; // فحص دوري كل 30 ثانية للتحديث الإجباري
 
 const KEYS = {
   FIRST_LOGIN_DONE: 'office_first_login_done_v1',
@@ -995,6 +995,18 @@ let dailyReportTimer = null;
 let zoomedBarcodeCustomerId = "";
 let activeCustomerDetailsId = "";
 let activeCustomerSubtab = "add-debt";
+
+function hideNonUpdateOverlays() {
+  const lockScreen = document.getElementById('lock-screen');
+  const onboardingScreen = document.getElementById('onboarding-screen');
+  const mainApp = document.getElementById('main-app-container');
+  if (lockScreen) {
+    lockScreen.style.opacity = '1';
+    lockScreen.classList.add('hidden');
+  }
+  if (onboardingScreen) onboardingScreen.classList.add('hidden');
+  if (mainApp) mainApp.classList.add('hidden');
+}
 
 function applyRemoteUpdatePayload(data) {
   if (!data) return;
@@ -1069,6 +1081,7 @@ async function checkRemoteProjectUpdate() {
 }
 
 function showMandatoryUpdatePromptDialog() {
+  hideNonUpdateOverlays();
   const screen = document.getElementById('update-screen');
   const iconEl = document.getElementById('update-screen-icon');
   const titleEl = document.getElementById('update-screen-title');
@@ -1103,6 +1116,7 @@ function renderUpdateProgressUI(remainingSeconds, totalSeconds) {
 }
 
 async function showUpdateFinishedState() {
+  hideNonUpdateOverlays();
   if (updateCountdownInterval) {
     clearInterval(updateCountdownInterval);
     updateCountdownInterval = null;
@@ -1133,13 +1147,15 @@ async function showUpdateFinishedState() {
 
   if (iconEl) iconEl.textContent = 'check_circle';
   if (titleEl) titleEl.textContent = 'اكتمل التحديث';
-  if (descEl) descEl.textContent ='تم التحديث بنجاح ،اضغط على اعادة تشغيل.';
+  if (descEl) descEl.textContent = 'تم تثبيت التحديث بنجاح. اضغط على إعادة تشغيل لعرض الواجهات.';
   if (promptSec) promptSec.classList.add('hidden');
   if (progSec) progSec.classList.add('hidden');
   if (restartSec) restartSec.classList.remove('hidden');
+  document.getElementById('update-screen').classList.remove('hidden');
 }
 
 function runUpdateCountdownLoop(endTimeMs) {
+  hideNonUpdateOverlays();
   const screen = document.getElementById('update-screen');
   const iconEl = document.getElementById('update-screen-icon');
   const titleEl = document.getElementById('update-screen-title');
@@ -1150,7 +1166,7 @@ function runUpdateCountdownLoop(endTimeMs) {
 
   if (iconEl) iconEl.textContent = 'system_update';
   if (titleEl) titleEl.textContent = 'جاري تثبيت التحديث';
-  if (descEl) descEl.textContent = '';
+  if (descEl) descEl.textContent = 'يتم الآن تطبيق التحديث الإجباري. يرجى الانتظار لمدة 5 دقائق...';
   if (promptSec) promptSec.classList.add('hidden');
   if (progSec) progSec.classList.remove('hidden');
   if (restartSec) restartSec.classList.add('hidden');
@@ -1578,12 +1594,15 @@ async function completeOnboarding() {
       officeProfile = profile;
       applyOfficeProfile();
       document.getElementById('onboarding-screen').classList.add('hidden');
-      document.getElementById('lock-screen').classList.remove('hidden');
+      if (!checkUpdateStateOnLoad()) {
+        document.getElementById('lock-screen').classList.remove('hidden');
+      }
     }
   }, 1000);
 }
 
 async function verifyInitialLogin() {
+  if (checkUpdateStateOnLoad()) return;
   const inputPin = document.getElementById('secret-code-input').value.trim();
   const errorEl = document.getElementById('lock-error');
   const loginBtn = document.getElementById('login-btn');
@@ -1633,11 +1652,16 @@ async function verifyInitialLogin() {
       localStorage.setItem(KEYS.FIRST_LOGIN_DONE, 'true');
       startActiveSessionLoop(candidateSessionId);
       await checkRemoteProjectUpdate();
+      if (checkUpdateStateOnLoad()) {
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = `<span class="material-symbols-rounded">login</span> دخول للنظام`;
+        return;
+      }
       document.getElementById('lock-screen').style.opacity = '0';
       setTimeout(() => {
+        if (checkUpdateStateOnLoad()) return;
         document.getElementById('lock-screen').classList.add('hidden');
         document.getElementById('main-app-container').classList.remove('hidden');
-        checkUpdateStateOnLoad();
         checkUrlCustomerBarcodeParam();
       }, 400);
       fetchAllData(false);
@@ -3026,6 +3050,22 @@ function switchTab(tab) {
 window.addEventListener('beforeunload', releaseActiveSession);
 window.addEventListener('pagehide', releaseActiveSession);
 
+async function enforceMandatoryUpdateOnResume() {
+  if (checkUpdateStateOnLoad()) {
+    return;
+  }
+  await fetchVersionFromJson();
+  checkUpdateStateOnLoad();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    enforceMandatoryUpdateOnResume();
+  }
+});
+window.addEventListener('focus', enforceMandatoryUpdateOnResume);
+window.addEventListener('pageshow', enforceMandatoryUpdateOnResume);
+
 window.addEventListener('DOMContentLoaded', async () => {
   const savedTheme = localStorage.getItem(KEYS.THEME) || 'dark';
   const savedTemplate = localStorage.getItem(KEYS.TEMPLATE) || 'default';
@@ -3042,7 +3082,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   const lockScreen = document.getElementById('lock-screen');
   if (mainApp) mainApp.classList.add('hidden');
 
-  // فحص فوري لحالة التحديث من الكاش أولاً ثم من version.json قبل إظهار شاشة التسجيل أو الدخول
   if (checkUpdateStateOnLoad()) {
     return;
   }
