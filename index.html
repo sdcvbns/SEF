@@ -600,7 +600,7 @@
     <p style="color:#aaa; font-size:0.72rem; margin-top:4px;">📱 اضغط مطولاً على الصورة لحفظها في الجهاز</p>
     <div style="display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap;">
       <button type="button" id="lightbox-share-btn" style="width:auto; padding:8px 14px; font-size:0.82rem;"><span class="material-symbols-rounded" style="font-size:16px;">print</span> طباعة / مشاركة الوصل</button>
-      <button type="button" id="lightbox-back-customer-btn" class="secondary" onclick="returnToCustomerFromReceipt()" style="width:auto; padding:8px 14px; font-size:0.82rem;"><span class="material-symbols-rounded" style="font-size:16px;">arrow_forward</span> رجوع للزبون</button>
+      <button type="button" id="lightbox-back-home-btn" onclick="returnToMainHome()" style="width:auto; padding:8px 14px; font-size:0.82rem;"><span class="material-symbols-rounded" style="font-size:16px;">home</span> رجوع للرئيسية</button>
       <button type="button" class="secondary" onclick="closeLightbox()" style="width:auto; padding:8px 14px; font-size:0.82rem;">إغلاق</button>
     </div>
   </div>
@@ -2063,16 +2063,8 @@ function openLightbox(imgSrc, metaText = '', receiptData = null) {
   const img = document.getElementById('lightbox-img');
   const metaEl = document.getElementById('lightbox-meta');
   const shareBtn = document.getElementById('lightbox-share-btn');
-  const backCustBtn = document.getElementById('lightbox-back-customer-btn');
   img.src = imgSrc;
   if (metaEl) metaEl.textContent = metaText || '';
-  if (backCustBtn) {
-    if (activeCustomerDetailsId) {
-      backCustBtn.classList.remove('hidden');
-    } else {
-      backCustBtn.classList.add('hidden');
-    }
-  }
   if (shareBtn) {
     if (receiptData) {
       shareBtn.classList.remove('hidden');
@@ -2102,13 +2094,11 @@ function closeLightbox() {
   document.getElementById('lightbox-modal').classList.add('hidden');
 }
 
-function returnToCustomerFromReceipt() {
+function returnToMainHome() {
   closeLightbox();
-  if (activeCustomerDetailsId) {
-    openCustomerDetails(activeCustomerDetailsId, activeCustomerSubtab || 'receipt-images');
-  } else {
-    switchTab('home');
-  }
+  closeModal('details-modal');
+  closeRightDrawer();
+  switchTab('home');
 }
 
 function openAddCustomerModal() {
@@ -2574,11 +2564,7 @@ function goBackFromReceipt(printWin = null) {
       window.opener.focus();
     }
   } catch (e) {}
-  if (activeCustomerDetailsId) {
-    openCustomerDetails(activeCustomerDetailsId, activeCustomerSubtab || 'receipts-dates');
-  } else {
-    switchTab('home');
-  }
+  returnToMainHome();
 }
 
 function printOrShareReceipt(customerName, type, amount, currency, details, date) {
@@ -2710,7 +2696,7 @@ function printOrShareReceipt(customerName, type, amount, currency, details, date
             <div class="footer-note">مع تحيات إدارة المكتب ✓</div>
           </div>
           <div class="actions-bar no-print">
-            <button type="button" id="receipt-back-btn" class="btn back-btn">➜ رجوع</button>
+            <button type="button" id="receipt-back-btn" class="btn back-btn">➜ رجوع للرئيسية</button>
             <button type="button" id="receipt-reprint-btn" class="btn print-btn">🖨 إعادة طباعة</button>
           </div>
           <script>
