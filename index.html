@@ -2098,6 +2098,9 @@ function returnToMainHome() {
   closeLightbox();
   closeModal('details-modal');
   closeRightDrawer();
+  try {
+    window.focus();
+  } catch (e) {}
   switchTab('home');
 }
 
@@ -2553,18 +2556,17 @@ async function confirmDeleteWithPin() {
 }
 
 function goBackFromReceipt(printWin = null) {
+  returnToMainHome();
   try {
     if (printWin && !printWin.closed) {
       printWin.close();
     }
   } catch (e) {}
   try {
-    window.focus();
     if (window.opener && !window.opener.closed) {
       window.opener.focus();
     }
   } catch (e) {}
-  returnToMainHome();
 }
 
 function printOrShareReceipt(customerName, type, amount, currency, details, date) {
@@ -2703,14 +2705,20 @@ function printOrShareReceipt(customerName, type, amount, currency, details, date
             function closeReceiptAndReturn() {
               try {
                 if (window.opener && !window.opener.closed) {
-                  window.opener.focus();
-                  if (typeof window.opener.goBackFromReceipt === 'function') {
-                    window.opener.goBackFromReceipt(window);
-                    return;
+                  if (typeof window.opener.returnToMainHome === 'function') {
+                    window.opener.returnToMainHome();
                   }
+                  window.opener.focus();
                 }
               } catch (e) {}
-              window.close();
+              try {
+                window.close();
+              } catch (e) {}
+              setTimeout(function() {
+                if (!window.closed && window.opener && !window.opener.closed && window.opener.location) {
+                  window.location.href = window.opener.location.href;
+                }
+              }, 80);
             }
             document.getElementById('receipt-back-btn').addEventListener('click', closeReceiptAndReturn);
             document.getElementById('receipt-reprint-btn').addEventListener('click', function() { window.print(); });
