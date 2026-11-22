@@ -351,7 +351,7 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.12); display: flex; flex-direction: column;
     align-items: center; justify-content: center; overflow: hidden;
   }
-  .barcode-square-box svg { max-width: 100%; max-height: 78px; width: auto; height: auto; display: block; margin: 0 auto; }
+  .barcode-square-box svg, .barcode-square-box canvas, .barcode-square-box img { max-width: 82px; max-height: 82px; width: 82px; height: 82px; display: block; margin: 0 auto; }
   .barcode-square-box small { color: #444; display: block; margin-top: 2px; font-weight: 700; font-size: 0.62rem; line-height: 1.1; }
 
   .customer-subtabs {
@@ -563,8 +563,8 @@
   <div class="modal" style="text-align:center; max-width:360px;" onclick="event.stopPropagation()">
     <h3 style="justify-content:center; margin-bottom:6px;">باركود الزبون الخاص</h3>
     <p id="barcode-zoom-name" style="font-size:0.85rem; color:var(--muted); margin-bottom:8px;"></p>
-    <div style="background:#ffffff; padding:16px; border-radius:var(--r-sm); display:inline-block;">
-      <svg id="zoomed-barcode"></svg>
+    <div id="zoomed-barcode-wrap" style="background:#ffffff; padding:16px; border-radius:var(--r-sm); display:inline-block;">
+      <div id="zoomed-barcode"></div>
     </div>
     <p style="font-size:0.75rem; color:var(--muted); margin-top:8px;">مسح الباركود يفتح تفاصيل الديون والمدفوعات والباقي والوصولات</p>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
@@ -2138,7 +2138,7 @@ async function saveCustomerData(e) {
   const usdAmt = Number(document.getElementById('f-debt-usd').value || 0);
   const hasUsd = document.getElementById('f-has-usd').checked;
 
-  const realUsd = hasUsd ? usdAmt : 0;
+  const realUsd = hasUsd && usdAmt > 0 ? usdAmt : 0;
   let tempCustId = editId;
   if (!editId && realUsd > 0) {
     tempCustId = 'cust_' + Date.now();
@@ -2209,7 +2209,7 @@ async function saveCreditorDebt(e) {
 
   if (!name || (iqdAmt <= 0 && (!hasUsd || usdAmt <= 0))) return;
 
-  const usdVal = hasUsd ? usdAmt : 0;
+  const usdVal = hasUsd && usdAmt > 0 ? usdAmt : 0;
   if (usdVal > 0) {
     const usdData = getLocalUsdData();
     const tempId = 'cred_usd_' + Date.now();
@@ -2355,7 +2355,7 @@ async function saveAmana(e) {
 
   if (!person || !item) return;
 
-  const usdVal = hasUsd ? usdAmt : 0;
+  const usdVal = hasUsd && usdAmt > 0 ? usdAmt : 0;
   if (usdVal > 0) {
     const usdData = getLocalUsdData();
     const tempId = 'amana_usd_' + Date.now();
@@ -2583,35 +2583,40 @@ function printOrShareReceipt(customerName, type, amount, currency, details, date
     }).catch(() => {});
   } else {
     const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <html dir="rtl">
-      <head>
-        <title>وصل - ${customerName}</title>
-        <style>
-          body { font-family: 'Cairo', sans-serif; padding: 20px; text-align: center; max-width: 300px; margin: auto; }
-          .box { border: 2px dashed #333; padding: 15px; border-radius: 10px; }
-          h3 { margin: 5px 0; }
-          p { margin: 6px 0; font-size: 14px; text-align: right; }
-        </style>
-      </head>
-      <body>
-        <div class="box">
-          <h3>${officeName}</h3>
-          <p style="text-align:center; font-size:12px; color:#666;">هاتف: ${officePhone}</p>
-          <hr>
-          <p><b>نوع المعاملة:</b> ${typeText}</p>
-          <p><b>الزبون:</b> ${customerName}</p>
-          <p><b>المبلغ:</b> ${Number(amount).toLocaleString()} ${currSymbol}</p>
-          <p><b>التفاصيل:</b> ${details || 'بدون'}</p>
-          <p><b>التاريخ:</b> ${date}</p>
-          <hr>
-          <p style="text-align:center; font-size:12px;">مع تحيات إدارة المكتب</p>
-        </div>
-        <script>window.print();<\/script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
+    if (printWindow) {
+      printWindow.document.write(`
+        <html dir="rtl">
+        <head>
+          <title>وصل - ${customerName}</title>
+          <style>
+            body { font-family: 'Cairo', sans-serif; padding: 20px; text-align: center; max-width: 320px; margin: auto; }
+            .box { border: 2px dashed #333; padding: 15px; border-radius: 10px; }
+            h3 { margin: 5px 0; }
+            p { margin: 6px 0; font-size: 14px; text-align: right; }
+            .back-btn { display: inline-block; margin-top: 16px; padding: 10px 20px; background: #111827; color: #ffffff; border: none; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; }
+            @media print { .no-print { display: none !important; } }
+          </style>
+        </head>
+        <body>
+          <div class="box">
+            <h3>${officeName}</h3>
+            <p style="text-align:center; font-size:12px; color:#666;">هاتف: ${officePhone}</p>
+            <hr>
+            <p><b>نوع المعاملة:</b> ${typeText}</p>
+            <p><b>الزبون:</b> ${customerName}</p>
+            <p><b>المبلغ:</b> ${Number(amount).toLocaleString()} ${currSymbol}</p>
+            <p><b>التفاصيل:</b> ${details || 'بدون'}</p>
+            <p><b>التاريخ:</b> ${date}</p>
+            <hr>
+            <p style="text-align:center; font-size:12px;">مع تحيات إدارة المكتب</p>
+          </div>
+          <button type="button" class="back-btn no-print" onclick="window.close()">رجوع</button>
+          <script>window.print();<\/script>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
   }
 }
 
@@ -2620,9 +2625,40 @@ function getCustomerBarcodePayload(customerId) {
   return `${baseUrl}?barcodeCustomer=${encodeURIComponent(String(customerId))}`;
 }
 
-function renderBarcodeToSvg(selector, customerId) {
+function renderBarcodeToTarget(targetEl, customerId) {
+  if (!targetEl) return;
   const payload = getCustomerBarcodePayload(customerId);
-  JsBarcode(selector, payload, {
+  targetEl.innerHTML = '';
+
+  if (typeof qrcode === 'function') {
+    const qr = qrcode(0, 'M');
+    qr.addData(payload);
+    qr.make();
+    const moduleCount = qr.getModuleCount();
+    const cellSize = 3;
+    const margin = 4;
+    const size = (moduleCount + margin * 2) * cellSize;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#000000';
+    for (let r = 0; r < moduleCount; r++) {
+      for (let c = 0; c < moduleCount; c++) {
+        if (qr.isDark(r, c)) {
+          ctx.fillRect((c + margin) * cellSize, (r + margin) * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+    targetEl.appendChild(canvas);
+    return;
+  }
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  targetEl.appendChild(svg);
+  JsBarcode(svg, payload, {
     format: "CODE128",
     lineColor: "#000",
     width: 1.4,
@@ -2639,13 +2675,36 @@ function openZoomedBarcode(customerId, customerName) {
   document.getElementById('barcode-zoom-modal').classList.remove('hidden');
   setTimeout(() => {
     try {
-      renderBarcodeToSvg("#zoomed-barcode", customerId);
+      renderBarcodeToTarget(document.getElementById('zoomed-barcode'), customerId);
     } catch (e) {}
   }, 50);
 }
 
 function saveBarcodeImage(customerId) {
-  const svgEl = document.querySelector('#zoomed-barcode:not([style*="display: none"])') || document.getElementById('cust-barcode') || document.getElementById('zoomed-barcode');
+  const container = !document.getElementById('barcode-zoom-modal')?.classList.contains('hidden')
+    ? document.getElementById('zoomed-barcode')
+    : document.getElementById('cust-barcode');
+  if (!container) return;
+
+  const triggerPngDownload = (dataUrl) => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `Barcode_${customerId || Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast("تم تنزيل الباركود في الجهاز ✓");
+  };
+
+  const canvasEl = container.querySelector('canvas');
+  if (canvasEl) {
+    try {
+      triggerPngDownload(canvasEl.toDataURL('image/png'));
+      return;
+    } catch (e) {}
+  }
+
+  const svgEl = container.querySelector('svg');
   if (!svgEl) return;
 
   const serializer = new XMLSerializer();
@@ -2671,14 +2730,8 @@ function saveBarcodeImage(customerId) {
         return;
       }
       const pngUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = pngUrl;
-      a.download = `Barcode_${customerId || Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      triggerPngDownload(pngUrl);
       setTimeout(() => URL.revokeObjectURL(pngUrl), 1500);
-      showToast("تم تنزيل الباركود في الجهاز ✓");
     }, 'image/png');
   };
   img.onerror = function() {
@@ -2814,7 +2867,7 @@ function openCustomerDetails(id, initialSubtab = 'add-debt') {
     </div>
 
     <div class="barcode-square-box" id="barcode-box-trigger" title="اضغط للتكبير أو اضغط مطولاً للتنزيل">
-      <svg id="cust-barcode"></svg>
+      <div id="cust-barcode"></div>
       <small>نقر: تكبير • مطول: تنزيل</small>
     </div>
 
@@ -2838,7 +2891,7 @@ function openCustomerDetails(id, initialSubtab = 'add-debt') {
         <input type="number" id="t-amount" placeholder="المبلغ" style="margin-bottom:6px;">
         <select id="t-currency" style="margin-bottom:6px;">
           <option value="IQD">د.ع</option>
-          <option value="USD">$</option>
+          <option value="USD">$ (اختياري)</option>
         </select>
       </div>
       <input type="text" id="t-details" placeholder="ملاحظة أو رقم الوصل" style="margin-bottom:6px;">
@@ -2889,7 +2942,7 @@ function openCustomerDetails(id, initialSubtab = 'add-debt') {
   base64ReceiptPhoto = "";
 
   try {
-    renderBarcodeToSvg("#cust-barcode", c.id);
+    renderBarcodeToTarget(document.getElementById('cust-barcode'), c.id);
 
     const barcodeBox = document.getElementById('barcode-box-trigger');
     let longPressTriggered = false;
@@ -2974,7 +3027,7 @@ function recordMovementImmediatelyToReports(customerId, type, amount, currency, 
 
 async function addTransaction(customerId, type) {
   const amount = document.getElementById('t-amount').value;
-  const currency = document.getElementById('t-currency').value;
+  const currency = document.getElementById('t-currency').value === 'USD' ? 'USD' : 'IQD';
   const details = document.getElementById('t-details').value.trim();
   if (!amount || Number(amount) <= 0) {
     alert("يرجى إدخال مبلغ صحيح");
@@ -2986,14 +3039,14 @@ async function addTransaction(customerId, type) {
   const dateStr = nowObj.toLocaleDateString('ar-IQ');
   const fullDateStr = formatFullDateTimeAr(nowObj);
 
-  if (photo) {
+  if (photo && currency === 'USD') {
     const usdData = getLocalUsdData();
     usdData.transactions.unshift({
       id: 'local_tr_' + Date.now(),
       customerId: String(customerId),
       type,
       amount: Number(amount),
-      currency,
+      currency: 'USD',
       details,
       date: dateStr,
       fullDate: fullDateStr,
