@@ -600,6 +600,7 @@
     <p style="color:#aaa; font-size:0.72rem; margin-top:4px;">📱 اضغط مطولاً على الصورة لحفظها في الجهاز</p>
     <div style="display:flex; gap:8px; justify-content:center; margin-top:10px; flex-wrap:wrap;">
       <button type="button" id="lightbox-share-btn" style="width:auto; padding:8px 14px; font-size:0.82rem;"><span class="material-symbols-rounded" style="font-size:16px;">print</span> طباعة / مشاركة الوصل</button>
+      <button type="button" id="lightbox-back-customer-btn" class="secondary" onclick="returnToCustomerFromReceipt()" style="width:auto; padding:8px 14px; font-size:0.82rem;"><span class="material-symbols-rounded" style="font-size:16px;">arrow_forward</span> رجوع للزبون</button>
       <button type="button" class="secondary" onclick="closeLightbox()" style="width:auto; padding:8px 14px; font-size:0.82rem;">إغلاق</button>
     </div>
   </div>
@@ -1276,8 +1277,8 @@ function openRightDrawer() {
 }
 
 function closeRightDrawer() {
-  const backdrop = document.getElementById('right-drawer-backdrop');
   const drawer = document.getElementById('right-drawer');
+  const backdrop = document.getElementById('right-drawer-backdrop');
   if (drawer) drawer.classList.add('closed');
   if (backdrop) backdrop.classList.add('hidden');
 }
@@ -2062,8 +2063,16 @@ function openLightbox(imgSrc, metaText = '', receiptData = null) {
   const img = document.getElementById('lightbox-img');
   const metaEl = document.getElementById('lightbox-meta');
   const shareBtn = document.getElementById('lightbox-share-btn');
+  const backCustBtn = document.getElementById('lightbox-back-customer-btn');
   img.src = imgSrc;
   if (metaEl) metaEl.textContent = metaText || '';
+  if (backCustBtn) {
+    if (activeCustomerDetailsId) {
+      backCustBtn.classList.remove('hidden');
+    } else {
+      backCustBtn.classList.add('hidden');
+    }
+  }
   if (shareBtn) {
     if (receiptData) {
       shareBtn.classList.remove('hidden');
@@ -2093,14 +2102,13 @@ function closeLightbox() {
   document.getElementById('lightbox-modal').classList.add('hidden');
 }
 
-function saveImageToPhone(dataUrl) {
-  const link = document.createElement('a');
-  link.href = dataUrl;
-  link.download = `Receipt_${Date.now()}.jpg`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  showToast("تم حفظ صورة الوصل في الجهاز بنجاح ✓");
+function returnToCustomerFromReceipt() {
+  closeLightbox();
+  if (activeCustomerDetailsId) {
+    openCustomerDetails(activeCustomerDetailsId, activeCustomerSubtab || 'receipt-images');
+  } else {
+    switchTab('home');
+  }
 }
 
 function openAddCustomerModal() {
@@ -2554,6 +2562,25 @@ async function confirmDeleteWithPin() {
   }
 }
 
+function goBackFromReceipt(printWin = null) {
+  try {
+    if (printWin && !printWin.closed) {
+      printWin.close();
+    }
+  } catch (e) {}
+  try {
+    window.focus();
+    if (window.opener && !window.opener.closed) {
+      window.opener.focus();
+    }
+  } catch (e) {}
+  if (activeCustomerDetailsId) {
+    openCustomerDetails(activeCustomerDetailsId, activeCustomerSubtab || 'receipts-dates');
+  } else {
+    switchTab('home');
+  }
+}
+
 function printOrShareReceipt(customerName, type, amount, currency, details, date) {
   const currSymbol = currency === 'USD' ? '$' : 'د.ع';
   const typeText = type === 'DEBT' ? 'دين جديد' : 'تسديد مبلغ';
@@ -2587,31 +2614,124 @@ function printOrShareReceipt(customerName, type, amount, currency, details, date
       printWindow.document.write(`
         <html dir="rtl">
         <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>وصل - ${customerName}</title>
+          <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
           <style>
-            body { font-family: 'Cairo', sans-serif; padding: 20px; text-align: center; max-width: 320px; margin: auto; }
-            .box { border: 2px dashed #333; padding: 15px; border-radius: 10px; }
-            h3 { margin: 5px 0; }
-            p { margin: 6px 0; font-size: 14px; text-align: right; }
-            .back-btn { display: inline-block; margin-top: 16px; padding: 10px 20px; background: #111827; color: #ffffff; border: none; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; }
-            @media print { .no-print { display: none !important; } }
+            * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+            body {
+              margin: 0;
+              padding: 20px 14px 32px;
+              background: linear-gradient(160deg, #0f172a 0%, #1e293b 100%);
+              min-height: 100vh;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              color: #0f172a;
+            }
+            .box {
+              width: 100%;
+              max-width: 360px;
+              background: #ffffff;
+              border: 2px solid #0b57d0;
+              padding: 20px 18px;
+              border-radius: 18px;
+              box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+            }
+            .badge {
+              display: inline-block;
+              background: #e0ecff;
+              color: #0b57d0;
+              font-weight: 800;
+              font-size: 12px;
+              padding: 4px 12px;
+              border-radius: 999px;
+              margin-bottom: 8px;
+            }
+            h3 { margin: 4px 0; font-size: 19px; font-weight: 800; color: #0f172a; text-align: center; }
+            .sub { text-align: center; font-size: 12px; color: #64748b; margin: 0 0 12px; }
+            hr { border: 0; border-top: 1.5px dashed #cbd5e1; margin: 12px 0; }
+            p { margin: 7px 0; font-size: 14px; text-align: right; color: #1e293b; display: flex; justify-content: space-between; gap: 10px; }
+            p b { color: #475569; font-weight: 700; }
+            p span { font-weight: 800; color: #0f172a; text-align: left; }
+            .footer-note { text-align: center; font-size: 12px; color: #0b57d0; font-weight: 700; margin-top: 10px; justify-content: center; }
+            .actions-bar {
+              width: 100%;
+              max-width: 360px;
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 10px;
+              margin-top: 14px;
+            }
+            .btn {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              padding: 12px 16px;
+              border: none;
+              border-radius: 14px;
+              font-size: 15px;
+              font-weight: 800;
+              cursor: pointer;
+              transition: transform 0.15s ease, opacity 0.15s ease;
+            }
+            .btn:active { transform: scale(0.97); opacity: 0.9; }
+            .back-btn {
+              background: linear-gradient(135deg, #2563eb 0%, #0b57d0 100%);
+              color: #ffffff;
+              box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+            }
+            .print-btn {
+              background: #f1f5f9;
+              color: #0f172a;
+              border: 1.5px solid #cbd5e1;
+            }
+            @media print {
+              body { background: #ffffff; padding: 10px; min-height: auto; }
+              .box { box-shadow: none; border: 2px dashed #333; max-width: 320px; }
+              .no-print { display: none !important; }
+            }
           </style>
         </head>
         <body>
           <div class="box">
+            <div style="text-align:center;"><span class="badge">إشعار معاملة مالية</span></div>
             <h3>${officeName}</h3>
-            <p style="text-align:center; font-size:12px; color:#666;">هاتف: ${officePhone}</p>
+            <div class="sub">هاتف: ${officePhone}</div>
             <hr>
-            <p><b>نوع المعاملة:</b> ${typeText}</p>
-            <p><b>الزبون:</b> ${customerName}</p>
-            <p><b>المبلغ:</b> ${Number(amount).toLocaleString()} ${currSymbol}</p>
-            <p><b>التفاصيل:</b> ${details || 'بدون'}</p>
-            <p><b>التاريخ:</b> ${date}</p>
+            <p><b>نوع المعاملة:</b> <span>${typeText}</span></p>
+            <p><b>الزبون:</b> <span>${customerName}</span></p>
+            <p><b>المبلغ:</b> <span>${Number(amount).toLocaleString()} ${currSymbol}</span></p>
+            <p><b>التفاصيل:</b> <span>${details || 'بدون'}</span></p>
+            <p><b>التاريخ:</b> <span>${date}</span></p>
             <hr>
-            <p style="text-align:center; font-size:12px;">مع تحيات إدارة المكتب</p>
+            <div class="footer-note">مع تحيات إدارة المكتب ✓</div>
           </div>
-          <button type="button" class="back-btn no-print" onclick="window.close()">رجوع</button>
-          <script>window.print();<\/script>
+          <div class="actions-bar no-print">
+            <button type="button" id="receipt-back-btn" class="btn back-btn">➜ رجوع</button>
+            <button type="button" id="receipt-reprint-btn" class="btn print-btn">🖨 إعادة طباعة</button>
+          </div>
+          <script>
+            function closeReceiptAndReturn() {
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.focus();
+                  if (typeof window.opener.goBackFromReceipt === 'function') {
+                    window.opener.goBackFromReceipt(window);
+                    return;
+                  }
+                }
+              } catch (e) {}
+              window.close();
+            }
+            document.getElementById('receipt-back-btn').addEventListener('click', closeReceiptAndReturn);
+            document.getElementById('receipt-reprint-btn').addEventListener('click', function() { window.print(); });
+            window.addEventListener('load', function() {
+              setTimeout(function() { window.print(); }, 200);
+            });
+          <\/script>
         </body>
         </html>
       `);
