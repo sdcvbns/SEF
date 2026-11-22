@@ -318,7 +318,12 @@
   .cust-debt { text-align: left; font-weight: 800; font-size: 0.85rem; line-height: 1.25; flex-shrink: 0; }
 
   .search-wrapper { position: relative; width: 100%; display: flex; align-items: center; }
-  .search-wrapper input { margin: 0; width: 100%; }
+  .search-wrapper input { margin: 0; width: 100%; padding-left: 44px; }
+  .search-barcode-btn {
+    position: absolute; left: 6px; width: 34px; height: 34px; margin: 0; padding: 0;
+    border-radius: 10px; background: var(--brand-soft); color: var(--brand);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
 
   nav.bottom {
     position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--line);
@@ -368,6 +373,33 @@
     background: var(--brand); color: var(--brand-on); border-color: var(--brand);
   }
 
+  .statement-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--card);
+    margin-top: 8px;
+  }
+  table.statement-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    text-align: right;
+  }
+  table.statement-table th,
+  table.statement-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  table.statement-table th {
+    background: var(--surface-high);
+    color: var(--text);
+    font-weight: 800;
+  }
+  table.statement-table tr:last-child td {
+    border-bottom: none;
+  }
+
   .receipt-preview-box {
     background: var(--surface-high); border: 1px solid var(--line); border-radius: var(--r-sm);
     padding: 8px; margin: 6px 0 10px; display: flex; align-items: center; gap: 10px;
@@ -399,7 +431,7 @@
 </head>
 <body>
 
-<!-- ديالوك التحديث الإجباري الكامل (إشعار إجباري -> عدّاد 5 دقائق -> إعادة تشغيل) -->
+<!-- ديالوك التحديث الإجباري الكامل (إشعار إجباري -> عدّاد دقيقتين -> إعادة تشغيل) -->
 <div id="update-screen" class="fullscreen-overlay hidden" style="z-index: 2147483647;">
   <div class="lock-card" style="border-color: var(--brand);">
     <div class="lock-icon">
@@ -422,7 +454,7 @@
       </div>
       <div style="display:flex; justify-content:space-between; font-size:0.82rem; font-weight:700; color:var(--text);">
         <span id="update-percent-text">0%</span>
-        <span id="update-timer-text" style="color:var(--brand);">05:00</span>
+        <span id="update-timer-text" style="color:var(--brand);">02:00</span>
       </div>
     </div>
 
@@ -566,10 +598,25 @@
     <div id="zoomed-barcode-wrap" style="background:#ffffff; padding:16px; border-radius:var(--r-sm); display:inline-block;">
       <div id="zoomed-barcode"></div>
     </div>
-    <p style="font-size:0.75rem; color:var(--muted); margin-top:8px;">مسح الباركود يفتح تفاصيل الديون والمدفوعات والباقي والوصولات</p>
+    <p style="font-size:0.75rem; color:var(--muted); margin-top:8px;">مسح الباركود يفتح معلومات ووصولات الزبون المرتبط به</p>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
       <button type="button" onclick="saveBarcodeImage(zoomedBarcodeCustomerId)"><span class="material-symbols-rounded" style="font-size:16px;">download</span> تنزيل</button>
       <button type="button" class="secondary" onclick="closeModal('barcode-zoom-modal')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة مسح الباركود داخل أيقونة البحث -->
+<div id="barcode-scan-modal" class="modal-bg center-dialog hidden" onclick="closeBarcodeScannerModal()">
+  <div class="modal" style="text-align:center; max-width:380px;" onclick="event.stopPropagation()">
+    <h3 style="justify-content:center; margin-bottom:6px;"><span class="material-symbols-rounded">qr_code_scanner</span> مسح باركود الزبون</h3>
+    <p style="font-size:0.78rem; color:var(--muted); margin-bottom:8px;">وجّه الكاميرا نحو باركود الزبون أو الصق رمز / رابط الباركود</p>
+    <video id="barcode-scan-video" autoplay playsinline muted style="width:100%; max-height:220px; border-radius:var(--r-sm); background:#000; object-fit:cover;"></video>
+    <p id="barcode-scan-status" style="font-size:0.76rem; color:var(--muted); margin:6px 0;"></p>
+    <input type="text" id="barcode-manual-input" placeholder="أو أدخل / الصق رمز أو رابط الباركود هنا..." onkeydown="if(event.key==='Enter'){processScannedBarcodeValue(this.value);}">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+      <button type="button" onclick="processScannedBarcodeValue(document.getElementById('barcode-manual-input').value)">فتح الزبون</button>
+      <button type="button" class="secondary" onclick="closeBarcodeScannerModal()">إغلاق</button>
     </div>
   </div>
 </div>
@@ -665,6 +712,9 @@
       <h3><span class="material-symbols-rounded">search</span> بحث سريع عن زبون</h3>
       <div class="search-wrapper">
         <input type="text" id="search-input" placeholder="ابحث باسم الزبون..." oninput="renderCustomersList()">
+        <button type="button" class="search-barcode-btn" onclick="openBarcodeScannerModal()" title="مسح باركود الزبون">
+          <span class="material-symbols-rounded" style="font-size:20px;">qr_code_scanner</span>
+        </button>
       </div>
     </div>
 
@@ -690,6 +740,9 @@
       </div>
       <div class="search-wrapper" style="margin-bottom:12px;">
         <input type="text" id="customers-tab-search-input" placeholder="ابحث عن زبون في القائمة..." oninput="renderCustomersTabList()">
+        <button type="button" class="search-barcode-btn" onclick="openBarcodeScannerModal()" title="مسح باركود الزبون">
+          <span class="material-symbols-rounded" style="font-size:20px;">qr_code_scanner</span>
+        </button>
       </div>
       <div id="customers-tab-list" class="list-box-mode"></div>
     </div>
@@ -924,7 +977,7 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyW62VKbCqa-LkEG-8CT9_rcLS3ZigdJbEwpxFhUfheOZGgrbSfr2ova942A0jrniuEYA/exec";
 const VERSION_JSON_URL = "https://raw.githubusercontent.com/sdcvbns/SEF/refs/heads/main/version.json";
 
-const UPDATE_DURATION_SECONDS = 5 * 60; // 5 دقائق
+const UPDATE_DURATION_SECONDS = 2 * 60; // دقيقتان
 const UPDATE_POLL_INTERVAL_MS = 30000; // فحص دوري كل 30 ثانية للتحديث الإجباري
 
 const KEYS = {
@@ -996,6 +1049,9 @@ let dailyReportTimer = null;
 let zoomedBarcodeCustomerId = "";
 let activeCustomerDetailsId = "";
 let activeCustomerSubtab = "add-debt";
+let selectedStatementYear = String(new Date().getFullYear());
+let barcodeScanStream = null;
+let barcodeScanAnimFrame = null;
 
 function hideNonUpdateOverlays() {
   const lockScreen = document.getElementById('lock-screen');
@@ -1167,7 +1223,7 @@ function runUpdateCountdownLoop(endTimeMs) {
 
   if (iconEl) iconEl.textContent = 'system_update';
   if (titleEl) titleEl.textContent = 'جاري تثبيت التحديث';
-  if (descEl) descEl.textContent = 'يتم الآن تطبيق التحديث الإجباري. يرجى الانتظار لمدة 5 دقائق...';
+  if (descEl) descEl.textContent = 'يتم الآن تطبيق التحديث الإجباري. يرجى الانتظار لمدة دقيقتين...';
   if (promptSec) promptSec.classList.add('hidden');
   if (progSec) progSec.classList.remove('hidden');
   if (restartSec) restartSec.classList.add('hidden');
@@ -1878,6 +1934,221 @@ function getCustomerFinances(custId) {
     remainingUSD: debtUSD - paidUSD,
     history: combinedHistory
   };
+}
+
+function getTransactionYear(t) {
+  if (t.timestamp) {
+    const dt = new Date(Number(t.timestamp));
+    if (!isNaN(dt.getTime())) return String(dt.getFullYear());
+  }
+  const combined = `${t.fullDate || ''} ${t.date || ''}`;
+  const yearMatch = combined.match(/\b(20\d{2}|19\d{2})\b/);
+  if (yearMatch && yearMatch[1]) return yearMatch[1];
+  const parsed = new Date(t.date || '');
+  if (!isNaN(parsed.getTime())) return String(parsed.getFullYear());
+  return String(new Date().getFullYear());
+}
+
+function getAvailableCustomerStatementYears(custId) {
+  const fin = getCustomerFinances(custId);
+  const yearsSet = new Set([String(new Date().getFullYear())]);
+  fin.history.forEach(t => {
+    yearsSet.add(getTransactionYear(t));
+  });
+  return Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
+}
+
+function renderCustomerAccountStatement(custId, yearVal) {
+  const container = document.getElementById('account-statement-body');
+  if (!container) return;
+  const c = customers.find(x => String(x.id) === String(custId));
+  if (!c) return;
+
+  const fin = getCustomerFinances(custId);
+  const allChronological = [...fin.history].sort((a, b) => {
+    const ta = new Date(a.timestamp || a.date).getTime() || 0;
+    const tb = new Date(b.timestamp || b.date).getTime() || 0;
+    return ta - tb;
+  });
+
+  const targetYear = String(yearVal || selectedStatementYear || new Date().getFullYear());
+  selectedStatementYear = targetYear;
+
+  const yearRows = allChronological.filter(t => getTransactionYear(t) === targetYear);
+
+  if (yearRows.length === 0) {
+    container.innerHTML = `<p style="text-align:center; color:var(--muted); margin:12px 0; font-size:0.82rem;">لا توجد عمليات دفع أو تسديد مسجلة لهذا الزبون في سنة ${targetYear}</p>`;
+    return;
+  }
+
+  let yearDebtIQD = 0, yearPaidIQD = 0, yearDebtUSD = 0, yearPaidUSD = 0;
+  const rowsHtml = yearRows.map((t, idx) => {
+    const curr = t.currency === 'USD' ? '$' : 'د.ع';
+    const amt = Number(t.amount || 0);
+    const isDebt = t.type === 'DEBT';
+    if (t.currency === 'USD') {
+      if (isDebt) yearDebtUSD += amt;
+      else yearPaidUSD += amt;
+    } else {
+      if (isDebt) yearDebtIQD += amt;
+      else yearPaidIQD += amt;
+    }
+    const dateLabel = t.fullDate || t.date || '';
+    return `
+      <tr>
+        <td>${idx + 1}</td>
+        <td><strong style="color:${isDebt ? 'var(--danger)' : 'var(--success)'};">${isDebt ? 'دين / إضافة' : 'تسديد / دفعة'}</strong></td>
+        <td><strong style="color:${isDebt ? 'var(--danger)' : 'var(--success)'};">${amt.toLocaleString()} ${curr}</strong></td>
+        <td>${t.details || 'بدون ملاحظات'}</td>
+        <td style="font-size:0.72rem; color:var(--muted);">${dateLabel}</td>
+      </tr>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; font-size:0.76rem; color:var(--muted); margin-bottom:8px; background:var(--surface-high); padding:8px 10px; border-radius:var(--r-sm);">
+      <span>مجموع الديون (${targetYear}): <b style="color:var(--danger);">${yearDebtIQD.toLocaleString()} د.ع</b> ${yearDebtUSD > 0 ? '| <b style="color:var(--danger);">' + yearDebtUSD.toLocaleString() + ' $</b>' : ''}</span>
+      <span>مجموع التسديد (${targetYear}): <b style="color:var(--success);">${yearPaidIQD.toLocaleString()} د.ع</b> ${yearPaidUSD > 0 ? '| <b style="color:var(--success);">' + yearPaidUSD.toLocaleString() + ' $</b>' : ''}</span>
+    </div>
+    <div class="statement-table-wrap">
+      <table class="statement-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>العملية</th>
+            <th>المبلغ</th>
+            <th>التفاصيل</th>
+            <th>التاريخ</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function downloadCustomerStatementPDF(custId) {
+  const c = customers.find(x => String(x.id) === String(custId));
+  if (!c) return;
+  const selectEl = document.getElementById('statement-year-select');
+  const yearVal = selectEl ? selectEl.value : (selectedStatementYear || String(new Date().getFullYear()));
+  const fin = getCustomerFinances(custId);
+
+  const allChronological = [...fin.history].sort((a, b) => {
+    const ta = new Date(a.timestamp || a.date).getTime() || 0;
+    const tb = new Date(b.timestamp || b.date).getTime() || 0;
+    return ta - tb;
+  });
+  const yearRows = allChronological.filter(t => getTransactionYear(t) === String(yearVal));
+
+  let sumDebtIQD = 0, sumPaidIQD = 0, sumDebtUSD = 0, sumPaidUSD = 0;
+  const tableRowsHtml = yearRows.length > 0
+    ? yearRows.map((t, idx) => {
+        const curr = t.currency === 'USD' ? '$' : 'د.ع';
+        const amt = Number(t.amount || 0);
+        const isDebt = t.type === 'DEBT';
+        if (t.currency === 'USD') {
+          if (isDebt) sumDebtUSD += amt;
+          else sumPaidUSD += amt;
+        } else {
+          if (isDebt) sumDebtIQD += amt;
+          else sumPaidIQD += amt;
+        }
+        return `
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${isDebt ? 'دين / إضافة' : 'تسديد / دفعة'}</td>
+            <td>${amt.toLocaleString()} ${curr}</td>
+            <td>${t.details || 'بدون ملاحظات'}</td>
+            <td>${t.fullDate || t.date || ''}</td>
+          </tr>
+        `;
+      }).join('')
+    : `<tr><td colspan="5" style="text-align:center;">لا توجد عمليات مسجلة في سنة ${yearVal}</td></tr>`;
+
+  const officeName = officeProfile ? officeProfile.name : 'نظام إدارة الديون';
+  const officePhone = officeProfile ? officeProfile.phone : '';
+
+  const pdfWin = window.open('', '_blank');
+  if (!pdfWin) {
+    showToast("يرجى السماح بفتح النوافذ لتنزيل PDF");
+    return;
+  }
+
+  pdfWin.document.write(`
+    <html dir="rtl">
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>كشف حساب - ${c.name} (${yearVal})</title>
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+      <style>
+        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        body { margin: 20px; color: #0f172a; background: #ffffff; }
+        .header { border-bottom: 2px solid #0b57d0; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+        .header h2 { margin: 0 0 4px; color: #0b57d0; font-size: 20px; }
+        .header p { margin: 2px 0; font-size: 13px; color: #475569; }
+        .meta { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 16px; font-size: 13px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
+        th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: right; }
+        th { background: #eff6ff; color: #0f172a; font-weight: 800; }
+        .summary { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; font-size: 13px; line-height: 1.8; }
+        .actions { margin-top: 16px; display: flex; gap: 10px; }
+        button { padding: 10px 16px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; background: #0b57d0; color: #fff; }
+        .close-btn { background: #e2e8f0; color: #0f172a; }
+        @media print { .no-print { display: none !important; } body { margin: 10px; } }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div>
+          <h2>${officeName}</h2>
+          <p>هاتف المكتب: ${officePhone}</p>
+        </div>
+        <div>
+          <p><b>كشف حساب زبون — سنة ${yearVal}</b></p>
+          <p>تاريخ الإصدار: ${formatFullDateTimeAr(new Date())}</p>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div><b>اسم الزبون:</b> ${c.name}</div>
+        <div><b>رقم الهاتف:</b> ${c.phone}</div>
+        <div><b>المحافظة:</b> ${c.gov}</div>
+        <div><b>العنوان:</b> ${c.address}</div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>نوع العملية</th>
+            <th>المبلغ</th>
+            <th>التفاصيل</th>
+            <th>التاريخ</th>
+          </tr>
+        </thead>
+        <tbody>${tableRowsHtml}</tbody>
+      </table>
+
+      <div class="summary">
+        <div><b>إجمالي الديون خلال سنة ${yearVal}:</b> ${sumDebtIQD.toLocaleString()} د.ع ${sumDebtUSD > 0 ? ' | ' + sumDebtUSD.toLocaleString() + ' $' : ''}</div>
+        <div><b>إجمالي التسديد خلال سنة ${yearVal}:</b> ${sumPaidIQD.toLocaleString()} د.ع ${sumPaidUSD > 0 ? ' | ' + sumPaidUSD.toLocaleString() + ' $' : ''}</div>
+        <div><b>الرصيد المتبقي الكلي للزبون:</b> ${fin.remainingIQD.toLocaleString()} د.ع ${fin.remainingUSD !== 0 ? ' | ' + fin.remainingUSD.toLocaleString() + ' $' : ''}</div>
+      </div>
+
+      <div class="actions no-print">
+        <button type="button" onclick="window.print()">حفظ / طباعة PDF</button>
+        <button type="button" class="close-btn" onclick="window.close()">إغلاق</button>
+      </div>
+      <script>
+        window.addEventListener('load', function() {
+          setTimeout(function() { window.print(); }, 250);
+        });
+      <\/script>
+    </body>
+    </html>
+  `);
+  pdfWin.document.close();
 }
 
 function renderCustomersList() {
@@ -2855,6 +3126,104 @@ function saveBarcodeImage(customerId) {
   img.src = url;
 }
 
+function extractCustomerIdFromBarcodeValue(rawVal) {
+  const val = String(rawVal || '').trim();
+  if (!val) return '';
+  try {
+    const urlObj = new URL(val);
+    const paramId = urlObj.searchParams.get('barcodeCustomer');
+    if (paramId) return decodeURIComponent(paramId).trim();
+  } catch (e) {}
+  const match = val.match(/[?&]barcodeCustomer=([^&]+)/i);
+  if (match && match[1]) return decodeURIComponent(match[1]).trim();
+  return val;
+}
+
+function processScannedBarcodeValue(rawVal) {
+  const customerId = extractCustomerIdFromBarcodeValue(rawVal);
+  if (!customerId) {
+    showToast("يرجى مسح أو إدخال باركود صحيح");
+    return;
+  }
+  const matched = customers.find(c => String(c.id).trim() === String(customerId).trim());
+  if (!matched) {
+    showToast("لم يتم العثور على زبون مرتبط بهذا الباركود");
+    return;
+  }
+  closeBarcodeScannerModal();
+  openCustomerDetails(matched.id, 'receipts-dates');
+}
+
+function stopBarcodeCameraLoop() {
+  if (barcodeScanAnimFrame) {
+    cancelAnimationFrame(barcodeScanAnimFrame);
+    barcodeScanAnimFrame = null;
+  }
+  if (barcodeScanStream) {
+    barcodeScanStream.getTracks().forEach(track => track.stop());
+    barcodeScanStream = null;
+  }
+  const video = document.getElementById('barcode-scan-video');
+  if (video) video.srcObject = null;
+}
+
+function closeBarcodeScannerModal() {
+  stopBarcodeCameraLoop();
+  document.getElementById('barcode-scan-modal')?.classList.add('hidden');
+}
+
+async function openBarcodeScannerModal() {
+  const modal = document.getElementById('barcode-scan-modal');
+  const statusEl = document.getElementById('barcode-scan-status');
+  const manualInput = document.getElementById('barcode-manual-input');
+  const video = document.getElementById('barcode-scan-video');
+  if (!modal) return;
+
+  if (manualInput) manualInput.value = '';
+  if (statusEl) statusEl.textContent = 'جاري تشغيل الكاميرا لمسح الباركود...';
+  modal.classList.remove('hidden');
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    if (statusEl) statusEl.textContent = 'الكاميرا غير متاحة؛ أدخل رمز الباركود يدوياً.';
+    return;
+  }
+
+  try {
+    barcodeScanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false
+    });
+    if (video) {
+      video.srcObject = barcodeScanStream;
+      await video.play().catch(() => {});
+    }
+
+    if ('BarcodeDetector' in window) {
+      const detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'upc_a'] });
+      if (statusEl) statusEl.textContent = 'وجّه الكاميرا نحو باركود الزبون...';
+      const scanFrame = async () => {
+        if (!video || video.readyState < 2) {
+          barcodeScanAnimFrame = requestAnimationFrame(scanFrame);
+          return;
+        }
+        try {
+          const barcodes = await detector.detect(video);
+          if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+            processScannedBarcodeValue(barcodes[0].rawValue);
+            return;
+          }
+        } catch (e) {}
+        barcodeScanAnimFrame = requestAnimationFrame(scanFrame);
+      };
+      barcodeScanAnimFrame = requestAnimationFrame(scanFrame);
+    } else if (statusEl) {
+      statusEl.textContent = 'الكاميرا تعمل؛ يمكنك أيضاً لصق أو إدخال رمز الباركود بالأسفل.';
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'تعذر الوصول للكاميرا؛ أدخل أو الصق رمز الباركود بالأسفل.';
+  }
+}
+
 function checkUrlCustomerBarcodeParam() {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -2862,19 +3231,23 @@ function checkUrlCustomerBarcodeParam() {
     if (!scannedId) return;
     const matched = customers.find(c => String(c.id).trim() === String(scannedId).trim());
     if (matched) {
-      openCustomerDetails(matched.id, 'reports');
+      openCustomerDetails(matched.id, 'receipts-dates');
     }
   } catch (e) {}
 }
 
 function switchCustomerSubtab(subtab) {
   activeCustomerSubtab = subtab;
-  ['add-debt', 'payments', 'reports', 'receipts-dates', 'receipt-images'].forEach(tab => {
+  ['add-debt', 'payments', 'reports', 'receipts-dates', 'receipt-images', 'account-statement'].forEach(tab => {
     const btn = document.getElementById(`subtab-btn-${tab}`);
     const pane = document.getElementById(`subtab-pane-${tab}`);
     if (btn) btn.classList.toggle('active', tab === subtab);
     if (pane) pane.classList.toggle('hidden', tab !== subtab);
   });
+  if (subtab === 'account-statement' && activeCustomerDetailsId) {
+    const sel = document.getElementById('statement-year-select');
+    renderCustomerAccountStatement(activeCustomerDetailsId, sel ? sel.value : selectedStatementYear);
+  }
 }
 
 function openCustomerDetails(id, initialSubtab = 'add-debt') {
@@ -2883,6 +3256,13 @@ function openCustomerDetails(id, initialSubtab = 'add-debt') {
   activeCustomerDetailsId = c.id;
   activeCustomerSubtab = initialSubtab;
   const fin = getCustomerFinances(id);
+  const availableYears = getAvailableCustomerStatementYears(id);
+  if (!availableYears.includes(String(selectedStatementYear))) {
+    selectedStatementYear = availableYears[0] || String(new Date().getFullYear());
+  }
+  const yearOptionsHTML = availableYears.map(y =>
+    `<option value="${y}" ${String(y) === String(selectedStatementYear) ? 'selected' : ''}>${y}</option>`
+  ).join('');
 
   const avatarHTML = c.photo 
     ? `<img src="${c.photo}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--brand);margin:0 auto 10px;display:block">` 
@@ -2997,6 +3377,7 @@ function openCustomerDetails(id, initialSubtab = 'add-debt') {
       <button type="button" id="subtab-btn-reports" class="customer-subtab-btn ${activeCustomerSubtab === 'reports' ? 'active' : ''}" onclick="switchCustomerSubtab('reports')">التقارير</button>
       <button type="button" id="subtab-btn-receipts-dates" class="customer-subtab-btn ${activeCustomerSubtab === 'receipts-dates' ? 'active' : ''}" onclick="switchCustomerSubtab('receipts-dates')">الوصولات بالتواريخ</button>
       <button type="button" id="subtab-btn-receipt-images" class="customer-subtab-btn ${activeCustomerSubtab === 'receipt-images' ? 'active' : ''}" onclick="switchCustomerSubtab('receipt-images')">صور الوصولات</button>
+      <button type="button" id="subtab-btn-account-statement" class="customer-subtab-btn ${activeCustomerSubtab === 'account-statement' ? 'active' : ''}" onclick="switchCustomerSubtab('account-statement')">كشف حساب الزبون</button>
     </div>
 
     <div id="subtab-pane-add-debt" class="${activeCustomerSubtab === 'add-debt' ? '' : 'hidden'}" style="background:var(--surface-container); padding:10px; border-radius:var(--r-sm); margin-bottom:12px;">
@@ -3044,6 +3425,21 @@ function openCustomerDetails(id, initialSubtab = 'add-debt') {
       ${receiptImagesHTML || '<p style="text-align:center; color:var(--muted); margin:8px 0">لا توجد صور وصولات مرفقة</p>'}
     </div>
 
+    <div id="subtab-pane-account-statement" class="${activeCustomerSubtab === 'account-statement' ? '' : 'hidden'}" style="background:var(--surface-container); padding:10px; border-radius:var(--r-sm); margin-bottom:12px;">
+      <div style="display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; margin-bottom:8px;">
+        <div>
+          <label for="statement-year-select" style="display:block; font-size:0.76rem; color:var(--muted); margin-bottom:2px;">اختر السنة:</label>
+          <select id="statement-year-select" style="margin:0; padding:8px 10px; font-size:0.84rem;" onchange="renderCustomerAccountStatement('${c.id}', this.value)">
+            ${yearOptionsHTML}
+          </select>
+        </div>
+        <button type="button" onclick="downloadCustomerStatementPDF('${c.id}')" style="width:auto; padding:9px 12px; font-size:0.78rem; margin:0; align-self:flex-end;">
+          <span class="material-symbols-rounded" style="font-size:16px;">picture_as_pdf</span> تنزيل الجدول PDF
+        </button>
+      </div>
+      <div id="account-statement-body"></div>
+    </div>
+
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
       <button class="secondary" onclick="openEditCustomerModal('${c.id}')"><span class="material-symbols-rounded" style="font-size:16px;">edit</span> تعديل</button>
       <button class="danger" onclick="requestDeleteCustomer('${c.id}')"><span class="material-symbols-rounded" style="font-size:16px;">delete</span> حذف</button>
@@ -3054,6 +3450,7 @@ function openCustomerDetails(id, initialSubtab = 'add-debt') {
 
   document.getElementById('details-modal').classList.remove('hidden');
   base64ReceiptPhoto = "";
+  renderCustomerAccountStatement(c.id, selectedStatementYear);
 
   try {
     renderBarcodeToTarget(document.getElementById('cust-barcode'), c.id);
