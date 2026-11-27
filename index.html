@@ -683,6 +683,10 @@
       <span class="material-symbols-rounded">summarize</span> التقارير والحركات اليومية
     </button>
 
+    <button type="button" id="drawer-btn-total-statement" class="drawer-nav-btn" onclick="openDrawerSection('total-statement')">
+      <span class="material-symbols-rounded">receipt_long</span> كشف الحساب الكلي
+    </button>
+
     <button type="button" id="drawer-btn-settings" class="drawer-nav-btn" onclick="openDrawerSection('settings')">
       <span class="material-symbols-rounded">settings</span> الاعدادت
     </button>
@@ -786,6 +790,35 @@
         <span id="daily-report-updated-label" style="font-size:0.72rem; color:var(--muted);">تحديث تلقائي كل 24 ساعة</span>
       </div>
       <div id="daily-reports-content"></div>
+    </div>
+  </div>
+
+  <!-- قسم كشف الحساب الكلي لكل الأشخاص بالأيام والأشهر والسنوات -->
+  <div id="view-total-statement" class="view hidden">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+        <h3 style="margin:0;"><span class="material-symbols-rounded">receipt_long</span> كشف الحساب الكلي لكل الأشخاص</h3>
+        <button type="button" onclick="downloadTotalAllAccountsPDF()" style="width:auto; padding:8px 12px; font-size:0.78rem; margin:0;">
+          <span class="material-symbols-rounded" style="font-size:16px;">picture_as_pdf</span> تنزيل PDF
+        </button>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:10px;">
+        <div>
+          <label for="total-stmt-year" style="display:block; font-size:0.74rem; color:var(--muted); margin-bottom:2px;">السنة:</label>
+          <select id="total-stmt-year" style="margin:0; padding:8px; font-size:0.82rem;" onchange="onTotalStatementFilterChange()"></select>
+        </div>
+        <div>
+          <label for="total-stmt-month" style="display:block; font-size:0.74rem; color:var(--muted); margin-bottom:2px;">الشهر:</label>
+          <select id="total-stmt-month" style="margin:0; padding:8px; font-size:0.82rem;" onchange="onTotalStatementFilterChange()"></select>
+        </div>
+        <div>
+          <label for="total-stmt-day" style="display:block; font-size:0.74rem; color:var(--muted); margin-bottom:2px;">اليوم:</label>
+          <select id="total-stmt-day" style="margin:0; padding:8px; font-size:0.82rem;" onchange="renderTotalAllAccountsStatement()"></select>
+        </div>
+      </div>
+
+      <div id="total-statement-content"></div>
     </div>
   </div>
 
@@ -1342,9 +1375,12 @@ function closeRightDrawer() {
 function openDrawerSection(section) {
   closeRightDrawer();
   document.getElementById('drawer-btn-reports')?.classList.toggle('active', section === 'reports');
+  document.getElementById('drawer-btn-total-statement')?.classList.toggle('active', section === 'total-statement');
   document.getElementById('drawer-btn-settings')?.classList.toggle('active', section === 'settings');
   if (section === 'reports') {
     switchTab('daily-reports');
+  } else if (section === 'total-statement') {
+    switchTab('total-statement');
   } else if (section === 'settings') {
     switchTab('settings');
   }
@@ -1845,6 +1881,340 @@ function renderDailyReports(forceRefresh = false) {
   `;
 }
 
+function getAllCombinedTransactions() {
+  const usdData = getLocalUsdData();
+  const seenIds = new Set();
+  const all = [];
+  [...transactions, ...(usdData.transactions || [])].forEach(t => {
+    const key = t.id ? String(t.id) : `${t.customerId}_${t.type}_${t.amount}_${t.timestamp || t.date}`;
+    if (!seenIds.has(key)) {
+      seenIds.add(key);
+      all.push(t);
+    }
+  });
+  return all;
+}
+
+function parseTransactionYMD(t) {
+  if (t.timestamp) {
+    const dt = new Date(Number(t.timestamp));
+    if (!isNaN(dt.getTime())) {
+      return {
+        year: String(dt.getFullYear()),
+        month: String(dt.getMonth() + 1).padStart(2, '0'),
+        day: String(dt.getDate()).padStart(2, '0')
+      };
+    }
+  }
+  const combined = `${t.fullDate || ''} ${t.date || ''}`;
+  const dmyMatch = combined.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](20\d{2}|19\d{2})\b/);
+  if (dmyMatch) {
+    return {
+      year: String(dmyMatch[3]),
+      month: String(dmyMatch[2]).padStart(2, '0'),
+      day: String(dmyMatch[1]).padStart(2, '0')
+    };
+  }
+  const ymdMatch = combined.match(/\b(20\d{2}|19\d{2})[\/\-](\d{1,2})[\/\-](\d{1,2})\b/);
+  if (ymdMatch) {
+    return {
+      year: String(ymdMatch[1]),
+      month: String(ymdMatch[2]).padStart(2, '0'),
+      day: String(ymdMatch[3]).padStart(2, '0')
+    };
+  }
+  const yearMatch = combined.match(/\b(20\d{2}|19\d{2})\b/);
+  const now = new Date();
+  return {
+    year: yearMatch ? String(yearMatch[1]) : String(now.getFullYear()),
+    month: '',
+    day: ''
+  };
+}
+
+function populateTotalStatementSelectors() {
+  const yearSel = document.getElementById('total-stmt-year');
+  const monthSel = document.getElementById('total-stmt-month');
+  const daySel = document.getElementById('total-stmt-day');
+  if (!yearSel || !monthSel || !daySel) return;
+
+  const prevYear = yearSel.value || String(new Date().getFullYear());
+  const prevMonth = monthSel.value || 'ALL';
+  const prevDay = daySel.value || 'ALL';
+
+  const allTrans = getAllCombinedTransactions();
+  const yearsSet = new Set([String(new Date().getFullYear())]);
+  allTrans.forEach(t => {
+    const ymd = parseTransactionYMD(t);
+    if (ymd.year) yearsSet.add(ymd.year);
+  });
+  const sortedYears = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
+
+  yearSel.innerHTML = `<option value="ALL">كل السنوات</option>` + sortedYears.map(y =>
+    `<option value="${y}">${y}</option>`
+  ).join('');
+  yearSel.value = (prevYear === 'ALL' || sortedYears.includes(prevYear)) ? prevYear : sortedYears[0];
+
+  const monthNames = [
+    ['01', '1 - كانون الثاني'],
+    ['02', '2 - شباط'],
+    ['03', '3 - آذار'],
+    ['04', '4 - نيسان'],
+    ['05', '5 - أيار'],
+    ['06', '6 - حزيران'],
+    ['07', '7 - تموز'],
+    ['08', '8 - آب'],
+    ['09', '9 - أيلول'],
+    ['10', '10 - تشرين الأول'],
+    ['11', '11 - تشرين الثاني'],
+    ['12', '12 - كانون الأول']
+  ];
+  monthSel.innerHTML = `<option value="ALL">كل الأشهر</option>` + monthNames.map(([val, label]) =>
+    `<option value="${val}">${label}</option>`
+  ).join('');
+  monthSel.value = (prevMonth === 'ALL' || monthNames.some(m => m[0] === prevMonth)) ? prevMonth : 'ALL';
+
+  let daysHtml = `<option value="ALL">كل الأيام</option>`;
+  for (let d = 1; d <= 31; d++) {
+    const dd = String(d).padStart(2, '0');
+    daysHtml += `<option value="${dd}">${d}</option>`;
+  }
+  daySel.innerHTML = daysHtml;
+  daySel.value = (prevDay === 'ALL' || (Number(prevDay) >= 1 && Number(prevDay) <= 31)) ? prevDay : 'ALL';
+}
+
+function onTotalStatementFilterChange() {
+  renderTotalAllAccountsStatement();
+}
+
+function getFilteredTotalStatementData() {
+  const yearVal = document.getElementById('total-stmt-year')?.value || String(new Date().getFullYear());
+  const monthVal = document.getElementById('total-stmt-month')?.value || 'ALL';
+  const dayVal = document.getElementById('total-stmt-day')?.value || 'ALL';
+
+  const allTrans = getAllCombinedTransactions().sort((a, b) => {
+    const ta = new Date(a.timestamp || a.date).getTime() || 0;
+    const tb = new Date(b.timestamp || b.date).getTime() || 0;
+    return ta - tb;
+  });
+
+  const filtered = allTrans.filter(t => {
+    const ymd = parseTransactionYMD(t);
+    if (yearVal !== 'ALL' && ymd.year !== yearVal) return false;
+    if (monthVal !== 'ALL' && ymd.month !== monthVal) return false;
+    if (dayVal !== 'ALL' && ymd.day !== dayVal) return false;
+    return true;
+  });
+
+  let totalDebtIQD = 0, totalPaidIQD = 0, totalDebtUSD = 0, totalPaidUSD = 0;
+  const peopleIds = new Set();
+
+  filtered.forEach(t => {
+    const curr = t.currency || 'IQD';
+    const amt = Number(t.amount || 0);
+    const isDebt = t.type === 'DEBT';
+    peopleIds.add(String(t.customerId || t.customerName || ''));
+    if (curr === 'USD') {
+      if (isDebt) totalDebtUSD += amt;
+      else totalPaidUSD += amt;
+    } else {
+      if (isDebt) totalDebtIQD += amt;
+      else totalPaidIQD += amt;
+    }
+  });
+
+  const periodParts = [];
+  if (yearVal !== 'ALL') periodParts.push(`سنة ${yearVal}`);
+  else periodParts.push(`كل السنوات`);
+  if (monthVal !== 'ALL') periodParts.push(`شهر ${Number(monthVal)}`);
+  if (dayVal !== 'ALL') periodParts.push(`يوم ${Number(dayVal)}`);
+
+  return {
+    yearVal,
+    monthVal,
+    dayVal,
+    periodLabel: periodParts.join(' — '),
+    filtered,
+    peopleCount: peopleIds.size,
+    totalDebtIQD,
+    totalPaidIQD,
+    totalDebtUSD,
+    totalPaidUSD
+  };
+}
+
+function renderTotalAllAccountsStatement() {
+  const container = document.getElementById('total-statement-content');
+  if (!container) return;
+
+  const yearSel = document.getElementById('total-stmt-year');
+  if (yearSel && yearSel.options.length === 0) {
+    populateTotalStatementSelectors();
+  }
+
+  const data = getFilteredTotalStatementData();
+
+  const rowsHtml = data.filtered.length > 0
+    ? data.filtered.map((t, idx) => {
+        const cust = customers.find(c => String(c.id) === String(t.customerId));
+        const personName = t.customerName || (cust ? cust.name : (t.customerId || 'زبون'));
+        const curr = t.currency === 'USD' ? '$' : 'د.ع';
+        const amt = Number(t.amount || 0);
+        const isDebt = t.type === 'DEBT';
+        const dateLabel = t.fullDate || t.date || '';
+        return `
+          <tr>
+            <td>${idx + 1}</td>
+            <td><b>${personName}</b></td>
+            <td><strong style="color:${isDebt ? 'var(--danger)' : 'var(--success)'};">${isDebt ? 'دين / إضافة' : 'تسديد / دفعة'}</strong></td>
+            <td><strong style="color:${isDebt ? 'var(--danger)' : 'var(--success)'};">${amt.toLocaleString()} ${curr}</strong></td>
+            <td>${t.details || 'بدون ملاحظات'}</td>
+            <td style="font-size:0.72rem; color:var(--muted);">${dateLabel}</td>
+          </tr>
+        `;
+      }).join('')
+    : `<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:14px;">لا توجد معاملات مسجلة في الفترة المحددة (${data.periodLabel})</td></tr>`;
+
+  container.innerHTML = `
+    <div style="font-size:0.78rem; color:var(--muted); margin-bottom:8px;">
+      الفترة: <b>${data.periodLabel}</b> • عدد الأشخاص: <b>${data.peopleCount}</b> • عدد المعاملات: <b>${data.filtered.length}</b>
+    </div>
+    <div class="balance-grid" style="margin-bottom:10px;">
+      <div class="bal-box" style="padding:8px;">
+        <span>إجمالي الديون (د.ع)</span>
+        <strong style="font-size:0.95rem; color:var(--danger);">${data.totalDebtIQD.toLocaleString()} د.ع</strong>
+      </div>
+      <div class="bal-box" style="padding:8px;">
+        <span>إجمالي التسديد (د.ع)</span>
+        <strong style="font-size:0.95rem; color:var(--success);">${data.totalPaidIQD.toLocaleString()} د.ع</strong>
+      </div>
+      <div class="bal-box" style="padding:8px;">
+        <span>إجمالي الديون ($)</span>
+        <strong style="font-size:0.95rem; color:var(--danger);">${data.totalDebtUSD.toLocaleString()} $</strong>
+      </div>
+      <div class="bal-box" style="padding:8px;">
+        <span>إجمالي التسديد ($)</span>
+        <strong style="font-size:0.95rem; color:var(--success);">${data.totalPaidUSD.toLocaleString()} $</strong>
+      </div>
+    </div>
+    <div class="statement-table-wrap" style="max-height:360px; overflow-y:auto;">
+      <table class="statement-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>اسم الشخص</th>
+            <th>العملية</th>
+            <th>المبلغ</th>
+            <th>التفاصيل</th>
+            <th>التاريخ</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function downloadTotalAllAccountsPDF() {
+  const data = getFilteredTotalStatementData();
+  const officeName = officeProfile ? officeProfile.name : 'نظام إدارة الديون';
+  const officePhone = officeProfile ? officeProfile.phone : '';
+
+  const tableRowsHtml = data.filtered.length > 0
+    ? data.filtered.map((t, idx) => {
+        const cust = customers.find(c => String(c.id) === String(t.customerId));
+        const personName = t.customerName || (cust ? cust.name : (t.customerId || 'زبون'));
+        const curr = t.currency === 'USD' ? '$' : 'د.ع';
+        const amt = Number(t.amount || 0);
+        const isDebt = t.type === 'DEBT';
+        return `
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${personName}</td>
+            <td>${isDebt ? 'دين / إضافة' : 'تسديد / دفعة'}</td>
+            <td>${amt.toLocaleString()} ${curr}</td>
+            <td>${t.details || 'بدون ملاحظات'}</td>
+            <td>${t.fullDate || t.date || ''}</td>
+          </tr>
+        `;
+      }).join('')
+    : `<tr><td colspan="6" style="text-align:center;">لا توجد معاملات مسجلة في الفترة المحددة</td></tr>`;
+
+  const pdfWin = window.open('', '_blank');
+  if (!pdfWin) {
+    showToast("يرجى السماح بفتح النوافذ لتنزيل PDF");
+    return;
+  }
+
+  pdfWin.document.write(`
+    <html dir="rtl">
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>كشف الحساب الكلي - ${data.periodLabel}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+      <style>
+        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        body { margin: 20px; color: #0f172a; background: #ffffff; }
+        .header { border-bottom: 2px solid #0b57d0; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+        .header h2 { margin: 0 0 4px; color: #0b57d0; font-size: 20px; }
+        .header p { margin: 2px 0; font-size: 13px; color: #475569; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
+        th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: right; }
+        th { background: #eff6ff; color: #0f172a; font-weight: 800; }
+        .summary { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; font-size: 13px; line-height: 1.8; }
+        .actions { margin-top: 16px; display: flex; gap: 10px; }
+        button { padding: 10px 16px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; background: #0b57d0; color: #fff; }
+        .close-btn { background: #e2e8f0; color: #0f172a; }
+        @media print { .no-print { display: none !important; } body { margin: 10px; } }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div>
+          <h2>${officeName}</h2>
+          <p>هاتف المكتب: ${officePhone}</p>
+        </div>
+        <div>
+          <p><b>كشف الحساب الكلي لكل الأشخاص — ${data.periodLabel}</b></p>
+          <p>تاريخ الإصدار: ${formatFullDateTimeAr(new Date())}</p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>اسم الشخص</th>
+            <th>نوع العملية</th>
+            <th>المبلغ</th>
+            <th>التفاصيل</th>
+            <th>التاريخ</th>
+          </tr>
+        </thead>
+        <tbody>${tableRowsHtml}</tbody>
+      </table>
+
+      <div class="summary">
+        <div><b>عدد الأشخاص في الفترة:</b> ${data.peopleCount} | <b>عدد المعاملات:</b> ${data.filtered.length}</div>
+        <div><b>إجمالي الديون (د.ع):</b> ${data.totalDebtIQD.toLocaleString()} د.ع ${data.totalDebtUSD > 0 ? ' | ' + data.totalDebtUSD.toLocaleString() + ' $' : ''}</div>
+        <div><b>إجمالي التسديد (د.ع):</b> ${data.totalPaidIQD.toLocaleString()} د.ع ${data.totalPaidUSD > 0 ? ' | ' + data.totalPaidUSD.toLocaleString() + ' $' : ''}</div>
+      </div>
+
+      <div class="actions no-print">
+        <button type="button" onclick="window.print()">حفظ / طباعة PDF</button>
+        <button type="button" class="close-btn" onclick="window.close()">إغلاق</button>
+      </div>
+      <script>
+        window.addEventListener('load', function() {
+          setTimeout(function() { window.print(); }, 250);
+        });
+      <\/script>
+    </body>
+    </html>
+  `);
+  pdfWin.document.close();
+}
+
 function startDailyReportAutoCycle() {
   renderDailyReports(false);
   if (dailyReportTimer) clearInterval(dailyReportTimer);
@@ -1879,6 +2249,8 @@ async function fetchAllData(showNotify = false) {
       renderCustomersList();
       renderCustomersTabList();
       renderDailyReports(true);
+      populateTotalStatementSelectors();
+      renderTotalAllAccountsStatement();
       renderCreditorDebtsList();
       renderAmanatList();
       checkUrlCustomerBarcodeParam();
@@ -3593,6 +3965,7 @@ function switchTab(tab) {
   document.getElementById('view-creditor-debts').classList.toggle('hidden', tab !== 'creditor-debts');
   document.getElementById('view-amanat').classList.toggle('hidden', tab !== 'amanat');
   document.getElementById('view-daily-reports').classList.toggle('hidden', tab !== 'daily-reports');
+  document.getElementById('view-total-statement').classList.toggle('hidden', tab !== 'total-statement');
   document.getElementById('view-settings').classList.toggle('hidden', tab !== 'settings');
 
   document.getElementById('nav-home').classList.toggle('active', tab === 'home');
@@ -3601,6 +3974,7 @@ function switchTab(tab) {
   document.getElementById('nav-amanat').classList.toggle('active', tab === 'amanat');
 
   document.getElementById('drawer-btn-reports')?.classList.toggle('active', tab === 'daily-reports');
+  document.getElementById('drawer-btn-total-statement')?.classList.toggle('active', tab === 'total-statement');
   document.getElementById('drawer-btn-settings')?.classList.toggle('active', tab === 'settings');
 
   if (tab === 'home') renderCustomersList();
@@ -3608,6 +3982,10 @@ function switchTab(tab) {
   if (tab === 'creditor-debts') renderCreditorDebtsList();
   if (tab === 'amanat') renderAmanatList();
   if (tab === 'daily-reports') renderDailyReports(false);
+  if (tab === 'total-statement') {
+    populateTotalStatementSelectors();
+    renderTotalAllAccountsStatement();
+  }
   window.scrollTo(0, 0);
 }
 
