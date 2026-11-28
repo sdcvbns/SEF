@@ -639,6 +639,27 @@
   </div>
 </div>
 
+<!-- نافذة تسديد / دفع مبلغ من الأمانة المالية -->
+<div id="pay-amana-modal" class="modal-bg hidden">
+  <div class="modal">
+    <h3><span class="material-symbols-rounded">payments</span> دفع مبلغ من الأمانة</h3>
+    <input type="hidden" id="pay-am-id">
+    <p id="pay-am-info" style="font-size:0.84rem; color:var(--muted); margin-bottom:8px;"></p>
+    <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; align-items:center;">
+      <input type="number" id="pay-am-amount" placeholder="المبلغ المراد دفعه *" min="1" oninput="updateAmanaRemainingPreview()">
+      <select id="pay-am-currency" style="margin:6px 0;" onchange="updateAmanaRemainingPreview()">
+        <option value="IQD">د.ع</option>
+        <option value="USD">$</option>
+      </select>
+    </div>
+    <div id="pay-am-remaining-box" style="background:var(--surface-container); border:1px solid var(--line); border-radius:var(--r-sm); padding:10px; margin-top:8px; font-size:0.84rem;">
+      <div>المبلغ الباقي بعد الدفع: <strong id="pay-am-remaining-val" style="color:var(--brand);">0</strong></div>
+    </div>
+    <button type="button" onclick="confirmAmanaPayment()" style="margin-top:12px;">تأكيد الدفع وتحديث الأمانة</button>
+    <button type="button" class="secondary" onclick="closeModal('pay-amana-modal')" style="margin-top:6px;">إلغاء</button>
+  </div>
+</div>
+
 <!-- 7. نافذة عرض الصورة المكبرة (Lightbox) -->
 <div id="lightbox-modal" class="modal-bg center-dialog hidden" onclick="closeLightbox()">
   <div class="modal" style="text-align:center; background:rgba(0,0,0,0.92); max-width:92vw;" onclick="event.stopPropagation()">
@@ -771,7 +792,7 @@
   <div id="view-amanat" class="view hidden">
     <div class="card">
       <h3><span class="material-symbols-rounded">inventory_2</span> أمانات الأشخاص</h3>
-      <p style="font-size:0.8rem; color:var(--muted); margin-bottom:12px;">إدارة الأمانات والودائع مع تحديد حالة التوصيل وحماية الحذف بالرمز السري.</p>
+      <p style="font-size:0.8rem; color:var(--muted); margin-bottom:12px;">إدارة الأمانات المالية والحاجات مع الدفع الجزئي واحتساب المتبقي تلقائياً وخيارات الإيصال الكامل أو الجزئي.</p>
       <button onclick="openAddAmanaModal()" style="margin-bottom:12px;">
         <span class="material-symbols-rounded">add_box</span> إضافة أمانة جديدة
       </button>
@@ -978,14 +999,24 @@
   <div class="modal">
     <h3><span class="material-symbols-rounded">inventory_2</span> إضافة أمانة جديدة</h3>
     <form id="amana-form" onsubmit="saveAmana(event)">
+      <label style="font-size:0.8rem; color:var(--muted); display:block;">نوع الأمانة *</label>
+      <select id="am-type" onchange="onAmanaTypeChange()">
+        <option value="مال">مال</option>
+        <option value="حاجة">حاجة</option>
+      </select>
+
       <input type="text" id="am-name" placeholder="اسم صاحب الأمانة *" required>
-      <input type="text" id="am-item" placeholder="وصف الأمانة (مثال: هاتف، مستمسكات، مبلغ) *" required>
-      <input type="number" id="am-amount-iqd" placeholder="المبلغ بالدينار (اختياري)" min="0" value="0">
-      <label class="checkbox-row" style="margin:4px 0 8px;">
-        <input type="checkbox" id="am-has-usd" onchange="toggleUsdInput('am')">
-        <span>إضافة مبلغ بالدولار ($) اختياري</span>
-      </label>
-      <input type="number" id="am-amount-usd" placeholder="المبلغ بالدولار ($)" min="0" value="0" class="hidden">
+      <input type="text" id="am-item" placeholder="وصف الأمانة (مثال: مبلغ مالي، تحويل، ظرف) *" required>
+
+      <div id="am-money-fields">
+        <input type="number" id="am-amount-iqd" placeholder="المبلغ الكلي بالدينار (د.ع) *" min="0" value="0">
+        <label class="checkbox-row" style="margin:4px 0 8px;">
+          <input type="checkbox" id="am-has-usd" onchange="toggleUsdInput('am')">
+          <span>إضافة مبلغ بالدولار ($) اختياري</span>
+        </label>
+        <input type="number" id="am-amount-usd" placeholder="المبلغ الكلي بالدولار ($)" min="0" value="0" class="hidden">
+      </div>
+
       <input type="text" id="am-note" placeholder="ملاحظات إضافية">
       
       <label style="font-size:0.80rem; color:var(--muted); display:block; margin-top:4px;">صورة وصل / صورة الأمانة (اختياري)</label>
@@ -993,6 +1024,8 @@
 
       <select id="am-status">
         <option value="لم تصل الأمانة">لم تصل الأمانة</option>
+        <option value="الأمانة لم تصل كاملاً">الأمانة لم تصل كاملاً</option>
+        <option value="تم إيصال الأمانة كاملاً مع المبلغ الكامل">تم إيصال الأمانة كاملاً مع المبلغ الكامل</option>
         <option value="تم إيصال الأمانة">تم إيصال الأمانة</option>
       </select>
       <button type="submit" style="margin-top:12px;">حفظ الأمانة</button>
@@ -1007,7 +1040,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyW62VKbCqa-LkEG-8CT9_rcLS3ZigdJbEwpxFhUfheOZGgrbSfr2ova942A0jrniuEYA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-CAQjGYHI2YGt-gEl6D0HIh2g5v9OqhDRMSkKmR0qVsht0FQbhs-7Wf94slOP9B59_Q/exec";
 const VERSION_JSON_URL = "https://raw.githubusercontent.com/sdcvbns/SEF/refs/heads/main/version.json";
 
 const UPDATE_DURATION_SECONDS = 2 * 60; // دقيقتان
@@ -2978,20 +3011,227 @@ function requestDeleteCreditorDebt(id) {
   openDeleteAuthModal();
 }
 
+function onAmanaTypeChange() {
+  const typeVal = document.getElementById('am-type')?.value || 'مال';
+  const moneyFields = document.getElementById('am-money-fields');
+  const iqdInput = document.getElementById('am-amount-iqd');
+  const hasUsdChk = document.getElementById('am-has-usd');
+  const usdInput = document.getElementById('am-amount-usd');
+  const itemInput = document.getElementById('am-item');
+
+  if (typeVal === 'حاجة') {
+    if (moneyFields) moneyFields.classList.add('hidden');
+    if (iqdInput) iqdInput.value = '0';
+    if (hasUsdChk) hasUsdChk.checked = false;
+    if (usdInput) {
+      usdInput.classList.add('hidden');
+      usdInput.value = '0';
+    }
+    if (itemInput) itemInput.placeholder = 'وصف الحاجة (مثال: هاتف، مستمسكات، مفتاح) *';
+  } else {
+    if (moneyFields) moneyFields.classList.remove('hidden');
+    if (itemInput) itemInput.placeholder = 'وصف الأمانة المالية (مثال: مبلغ، حوالة، ظرف) *';
+  }
+}
+
 function openAddAmanaModal() {
   document.getElementById('amana-form').reset();
+  document.getElementById('am-type').value = 'مال';
   document.getElementById('am-amount-usd').classList.add('hidden');
+  onAmanaTypeChange();
   base64AmanaPhoto = "";
   document.getElementById('amana-modal').classList.remove('hidden');
 }
 
+function getAmanaComputedAmounts(a) {
+  const usdData = getLocalUsdData();
+  const localAm = usdData.amanat && a.id ? usdData.amanat[a.id] : null;
+  const totalIQD = Number(a.amountIQD ?? a.amount ?? 0);
+  let totalUSD = Number(a.amountUSD ?? (localAm ? localAm.amountUSD : 0) ?? 0);
+  if (!a.id && usdData.amanat) {
+    Object.values(usdData.amanat).forEach(ua => {
+      if (ua.person === a.person) totalUSD += Number(ua.amountUSD || 0);
+    });
+  }
+  const paidIQD = Number(a.paidIQD ?? (localAm ? localAm.paidIQD : 0) ?? 0);
+  const paidUSD = Number(a.paidUSD ?? (localAm ? localAm.paidUSD : 0) ?? 0);
+  const remIQD = a.remainingIQD !== undefined && a.remainingIQD !== null
+    ? Number(a.remainingIQD)
+    : Math.max(0, totalIQD - paidIQD);
+  const remUSD = a.remainingUSD !== undefined && a.remainingUSD !== null
+    ? Number(a.remainingUSD)
+    : Math.max(0, totalUSD - paidUSD);
+
+  return { totalIQD, totalUSD, paidIQD, paidUSD, remIQD, remUSD };
+}
+
+function openPayAmanaModal(id) {
+  const a = amanatList.find(x => String(x.id) === String(id));
+  if (!a) return;
+  const amanaType = a.type || 'مال';
+  if (amanaType !== 'مال') {
+    showToast("ميزة دفع المبالغ والباقي تنطبق على الأمانات المالية فقط");
+    return;
+  }
+  const vals = getAmanaComputedAmounts(a);
+  document.getElementById('pay-am-id').value = a.id;
+  document.getElementById('pay-am-info').textContent =
+    `صاحب الأمانة: ${a.person} | الكلي: ${vals.totalIQD.toLocaleString()} د.ع ${vals.totalUSD > 0 ? '| ' + vals.totalUSD.toLocaleString() + ' $' : ''} | المتبقي حالياً: ${vals.remIQD.toLocaleString()} د.ع ${vals.remUSD > 0 ? '| ' + vals.remUSD.toLocaleString() + ' $' : ''}`;
+  document.getElementById('pay-am-currency').value = (vals.remIQD <= 0 && vals.remUSD > 0) ? 'USD' : 'IQD';
+  document.getElementById('pay-am-amount').value = '';
+  updateAmanaRemainingPreview();
+  document.getElementById('pay-amana-modal').classList.remove('hidden');
+}
+
+function updateAmanaRemainingPreview() {
+  const id = document.getElementById('pay-am-id')?.value;
+  const a = amanatList.find(x => String(x.id) === String(id));
+  const remEl = document.getElementById('pay-am-remaining-val');
+  if (!a || !remEl) return;
+
+  const vals = getAmanaComputedAmounts(a);
+  const curr = document.getElementById('pay-am-currency')?.value || 'IQD';
+  const payVal = Math.max(0, Number(document.getElementById('pay-am-amount')?.value || 0));
+
+  if (curr === 'USD') {
+    const newRem = Math.max(0, vals.remUSD - payVal);
+    remEl.textContent = `${newRem.toLocaleString()} $`;
+  } else {
+    const newRem = Math.max(0, vals.remIQD - payVal);
+    remEl.textContent = `${newRem.toLocaleString()} د.ع`;
+  }
+}
+
+async function confirmAmanaPayment() {
+  const id = document.getElementById('pay-am-id').value;
+  const payAmt = Number(document.getElementById('pay-am-amount').value || 0);
+  const currency = document.getElementById('pay-am-currency').value === 'USD' ? 'USD' : 'IQD';
+  const a = amanatList.find(x => String(x.id) === String(id));
+  if (!a || payAmt <= 0) {
+    alert("يرجى إدخال المبلغ المراد دفعه");
+    return;
+  }
+
+  const vals = getAmanaComputedAmounts(a);
+  let newPaidIQD = vals.paidIQD;
+  let newPaidUSD = vals.paidUSD;
+  let newRemIQD = vals.remIQD;
+  let newRemUSD = vals.remUSD;
+
+  if (currency === 'USD') {
+    const actualPay = Math.min(payAmt, vals.remUSD > 0 ? vals.remUSD : payAmt);
+    newPaidUSD = vals.paidUSD + actualPay;
+    newRemUSD = Math.max(0, vals.totalUSD - newPaidUSD);
+  } else {
+    const actualPay = Math.min(payAmt, vals.remIQD > 0 ? vals.remIQD : payAmt);
+    newPaidIQD = vals.paidIQD + actualPay;
+    newRemIQD = Math.max(0, vals.totalIQD - newPaidIQD);
+  }
+
+  const isFullyPaid = newRemIQD <= 0 && newRemUSD <= 0;
+  const newStatus = isFullyPaid ? "تم إيصال الأمانة كاملاً مع المبلغ الكامل" : "الأمانة لم تصل كاملاً";
+
+  a.type = a.type || 'مال';
+  a.paidIQD = newPaidIQD;
+  a.paidUSD = newPaidUSD;
+  a.remainingIQD = newRemIQD;
+  a.remainingUSD = newRemUSD;
+  a.status = newStatus;
+
+  const usdData = getLocalUsdData();
+  usdData.amanat[String(a.id)] = {
+    person: a.person,
+    amountUSD: vals.totalUSD,
+    paidIQD: newPaidIQD,
+    paidUSD: newPaidUSD,
+    remainingIQD: newRemIQD,
+    remainingUSD: newRemUSD
+  };
+  saveLocalUsdData(usdData);
+
+  closeModal('pay-amana-modal');
+  renderAmanatList();
+  showToast(isFullyPaid ? "تم دفع المبلغ الكامل وإيصال الأمانة ✓" : `تم تسجيل الدفعة والمتبقي: ${currency === 'USD' ? newRemUSD.toLocaleString() + ' $' : newRemIQD.toLocaleString() + ' د.ع'}`);
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'payAmana',
+        id: a.id,
+        type: a.type,
+        paidAmount: payAmt,
+        currency,
+        paidIQD: newPaidIQD,
+        paidUSD: newPaidUSD,
+        remainingIQD: newRemIQD,
+        remainingUSD: newRemUSD,
+        status: newStatus
+      })
+    });
+  } catch (e) {}
+}
+
+async function setAmanaFullAmountDelivered(id) {
+  const a = amanatList.find(x => String(x.id) === String(id));
+  if (!a) return;
+  const amanaType = a.type || 'مال';
+  if (amanaType !== 'مال') {
+    showToast("هذا الخيار مخصص للأمانات المالية فقط");
+    return;
+  }
+
+  const vals = getAmanaComputedAmounts(a);
+  const newStatus = "تم إيصال الأمانة كاملاً مع المبلغ الكامل";
+  a.paidIQD = vals.totalIQD;
+  a.paidUSD = vals.totalUSD;
+  a.remainingIQD = 0;
+  a.remainingUSD = 0;
+  a.status = newStatus;
+
+  const usdData = getLocalUsdData();
+  usdData.amanat[String(a.id)] = {
+    person: a.person,
+    amountUSD: vals.totalUSD,
+    paidIQD: vals.totalIQD,
+    paidUSD: vals.totalUSD,
+    remainingIQD: 0,
+    remainingUSD: 0
+  };
+  saveLocalUsdData(usdData);
+
+  renderAmanatList();
+  showToast("تم تحديد: إيصال الأمانة كاملاً مع المبلغ الكامل ✓");
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'toggleAmana',
+        id: a.id,
+        type: a.type || 'مال',
+        paidIQD: vals.totalIQD,
+        paidUSD: vals.totalUSD,
+        remainingIQD: 0,
+        remainingUSD: 0,
+        status: newStatus
+      })
+    });
+  } catch (e) {}
+}
+
 async function saveAmana(e) {
   e.preventDefault();
+  const type = document.getElementById('am-type')?.value === 'حاجة' ? 'حاجة' : 'مال';
   const person = document.getElementById('am-name').value.trim();
   const item = document.getElementById('am-item').value.trim();
-  const iqdAmt = Number(document.getElementById('am-amount-iqd').value || 0);
-  const usdAmt = Number(document.getElementById('am-amount-usd').value || 0);
-  const hasUsd = document.getElementById('am-has-usd').checked;
+  const iqdAmt = type === 'مال' ? Number(document.getElementById('am-amount-iqd').value || 0) : 0;
+  const usdAmt = type === 'مال' ? Number(document.getElementById('am-amount-usd').value || 0) : 0;
+  const hasUsd = type === 'مال' && document.getElementById('am-has-usd').checked;
   const note = document.getElementById('am-note').value.trim();
   const status = document.getElementById('am-status').value;
   const photo = base64AmanaPhoto || "";
@@ -3000,19 +3240,38 @@ async function saveAmana(e) {
   if (!person || !item) return;
 
   const usdVal = hasUsd && usdAmt > 0 ? usdAmt : 0;
-  if (usdVal > 0) {
+  const isFullDelivered = status === "تم إيصال الأمانة كاملاً مع المبلغ الكامل" || status === "تم إيصال الأمانة";
+  const paidIQD = (type === 'مال' && isFullDelivered) ? iqdAmt : 0;
+  const paidUSD = (type === 'مال' && isFullDelivered) ? usdVal : 0;
+  const remainingIQD = type === 'مال' ? Math.max(0, iqdAmt - paidIQD) : 0;
+  const remainingUSD = type === 'مال' ? Math.max(0, usdVal - paidUSD) : 0;
+
+  const tempId = 'am_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  if (type === 'مال' && usdVal > 0) {
     const usdData = getLocalUsdData();
-    const tempId = 'amana_usd_' + Date.now();
-    usdData.amanat[tempId] = { person, amountUSD: usdVal };
+    usdData.amanat[tempId] = {
+      person,
+      amountUSD: usdVal,
+      paidIQD,
+      paidUSD,
+      remainingIQD,
+      remainingUSD
+    };
     saveLocalUsdData(usdData);
   }
 
   const payload = {
     action: 'saveAmana',
+    id: tempId,
+    type,
     person,
     item,
     amountIQD: iqdAmt,
-    amountUSD: 0,
+    amountUSD: usdVal,
+    paidIQD,
+    paidUSD,
+    remainingIQD,
+    remainingUSD,
     note: note || 'بدون ملاحظات',
     status,
     photo
@@ -3048,36 +3307,60 @@ function renderAmanatList() {
     card.style.alignItems = 'stretch';
     card.style.gap = '8px';
 
-    const isDelivered = a.status === "تم إيصال الأمانة";
-    const iqd = Number(a.amountIQD || a.amount || 0);
-    let usd = Number(a.amountUSD || 0);
+    const amanaType = a.type || 'مال';
+    const isMoney = amanaType === 'مال';
+    const isDelivered = a.status === "تم إيصال الأمانة" || a.status === "تم إيصال الأمانة كاملاً مع المبلغ الكامل";
+    const vals = getAmanaComputedAmounts(a);
 
-    Object.values(usdData.amanat).forEach(ua => {
-      if (ua.person === a.person) usd += Number(ua.amountUSD || 0);
-    });
+    let amtSummaryHtml = '';
+    if (isMoney) {
+      let totalParts = [];
+      if (vals.totalIQD > 0 || vals.totalUSD === 0) totalParts.push(`${vals.totalIQD.toLocaleString()} د.ع`);
+      if (vals.totalUSD > 0) totalParts.push(`${vals.totalUSD.toLocaleString()} $`);
 
-    let amtText = [];
-    if (iqd > 0 || usd === 0) amtText.push(`${iqd.toLocaleString()} د.ع`);
-    if (usd > 0) amtText.push(`${usd.toLocaleString()} $`);
+      let remParts = [];
+      if (vals.remIQD > 0 || vals.remUSD === 0) remParts.push(`${vals.remIQD.toLocaleString()} د.ع`);
+      if (vals.remUSD > 0) remParts.push(`${vals.remUSD.toLocaleString()} $`);
+
+      amtSummaryHtml = `
+        <span style="display:block; font-size:0.78rem; color:var(--muted);">
+          المبلغ الكلي: <b>${totalParts.join(' | ')}</b> • المدفوع: <b style="color:var(--success);">${vals.paidIQD.toLocaleString()} د.ع</b>${vals.paidUSD > 0 ? ' / <b style="color:var(--success);">' + vals.paidUSD.toLocaleString() + ' $</b>' : ''} • الباقي: <b style="color:var(--danger);">${remParts.join(' | ')}</b>
+        </span>
+      `;
+    } else {
+      amtSummaryHtml = `<span style="display:block; font-size:0.78rem; color:var(--muted);">نوع الأمانة: <b>حاجة</b></span>`;
+    }
 
     const amanaPhotoThumb = a.photo ? `<img src="${a.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;cursor:pointer;margin-top:4px;" onclick="openLightbox('${a.photo}', '${a.person} — ${a.item}')" title="انقر لتكبير الوصل">` : '';
 
+    const moneyActionButtons = isMoney ? `
+      <button onclick="openPayAmanaModal('${a.id}')" class="success" style="padding:8px; font-size:0.78rem; margin:0;">
+        <span class="material-symbols-rounded" style="font-size:16px;">payments</span> دفع مبلغ / المتبقي
+      </button>
+      <button onclick="setAmanaFullAmountDelivered('${a.id}')" class="secondary" style="padding:8px; font-size:0.78rem; margin:0;">
+        <span class="material-symbols-rounded" style="font-size:16px;">task_alt</span> إيصال كامل مع المبلغ
+      </button>
+    ` : '';
+
     card.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
         <div>
           <strong style="font-size:1rem;">${a.person} — ${a.item}</strong>
-          <span style="display:block; font-size:0.78rem; color:var(--muted);">المبلغ: ${amtText.join(' | ')} | ${a.note}</span>
+          <span style="display:inline-block; margin-right:6px; padding:1px 7px; border-radius:6px; font-size:0.7rem; font-weight:700; background:var(--brand-soft); color:var(--brand);">${amanaType}</span>
+          ${amtSummaryHtml}
+          <span style="display:block; font-size:0.75rem; color:var(--muted);">${a.note || ''}</span>
           ${amanaPhotoThumb}
         </div>
-        <div style="text-align:left;">
-          <span style="padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:700; background: ${isDelivered ? 'var(--success-container)' : 'var(--surface-high)'}; color: ${isDelivered ? 'var(--success)' : 'var(--muted)'};">
+        <div style="text-align:left; flex-shrink:0;">
+          <span style="padding:4px 8px; border-radius:6px; font-size:0.72rem; font-weight:700; background: ${isDelivered ? 'var(--success-container)' : 'var(--surface-high)'}; color: ${isDelivered ? 'var(--success)' : 'var(--muted)'};">
             ${a.status}
           </span>
         </div>
       </div>
-      <div style="display:flex; gap:8px; margin-top:4px;">
-        <button onclick="toggleAmanaStatus('${a.id}')" class="secondary" style="padding:8px; font-size:0.8rem; margin:0;"><span class="material-symbols-rounded" style="font-size:16px;">swap_horiz</span> تغيير الحالة</button>
-        <button onclick="requestDeleteAmana('${a.id}')" class="danger" style="padding:8px; font-size:0.8rem; margin:0;"><span class="material-symbols-rounded" style="font-size:16px;">delete</span> حذف الأمانة</button>
+      <div style="display:flex; gap:8px; margin-top:4px; flex-wrap:wrap;">
+        ${moneyActionButtons}
+        <button onclick="toggleAmanaStatus('${a.id}')" class="secondary" style="padding:8px; font-size:0.78rem; margin:0;"><span class="material-symbols-rounded" style="font-size:16px;">swap_horiz</span> تغيير الحالة</button>
+        <button onclick="requestDeleteAmana('${a.id}')" class="danger" style="padding:8px; font-size:0.78rem; margin:0;"><span class="material-symbols-rounded" style="font-size:16px;">delete</span> حذف الأمانة</button>
       </div>
     `;
     listEl.appendChild(card);
@@ -3085,18 +3368,46 @@ function renderAmanatList() {
 }
 
 async function toggleAmanaStatus(id) {
-  const a = amanatList.find(x => x.id === id);
+  const a = amanatList.find(x => String(x.id) === String(id));
   if (!a) return;
-  const newStatus = a.status === "تم إيصال الأمانة" ? "لم تصل الأمانة" : "تم إيصال الأمانة";
-  
+  const amanaType = a.type || 'مال';
+  const order = isMoneyAmana(amanaType)
+    ? ["لم تصل الأمانة", "الأمانة لم تصل كاملاً", "تم إيصال الأمانة كاملاً مع المبلغ الكامل"]
+    : ["لم تصل الأمانة", "تم إيصال الأمانة"];
+  const idx = order.indexOf(a.status);
+  const newStatus = order[(idx + 1) % order.length];
+  a.status = newStatus;
+
+  const vals = getAmanaComputedAmounts(a);
+  if (isMoneyAmana(amanaType) && newStatus === "تم إيصال الأمانة كاملاً مع المبلغ الكامل") {
+    a.paidIQD = vals.totalIQD;
+    a.paidUSD = vals.totalUSD;
+    a.remainingIQD = 0;
+    a.remainingUSD = 0;
+  }
+
+  renderAmanatList();
   showToast("جاري التحديث...");
   await fetch(SCRIPT_URL, {
     method: 'POST',
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'toggleAmana', id, status: newStatus })
+    body: JSON.stringify({
+      action: 'toggleAmana',
+      id,
+      type: amanaType,
+      paidIQD: a.paidIQD ?? vals.paidIQD,
+      paidUSD: a.paidUSD ?? vals.paidUSD,
+      remainingIQD: a.remainingIQD ?? vals.remIQD,
+      remainingUSD: a.remainingUSD ?? vals.remUSD,
+      status: newStatus
+    })
   });
   await fetchAllData(true);
+}
+
+function isMoneyAmana(t) {
+  return (t || 'مال') === 'مال';
 }
 
 function requestDeleteAmana(id) {
